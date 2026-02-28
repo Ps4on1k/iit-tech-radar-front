@@ -33,10 +33,10 @@ export const HomePage: React.FC = () => {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated && data.length === 0 && !loading) {
+    if (isAuthenticated && data.length === 0) {
       fetchData();
     }
-  }, [isAuthenticated, data.length, loading, fetchData]);
+  }, [isAuthenticated, data.length, fetchData]);
 
   const handleRadarFilter = useCallback((category?: TechRadarCategory, type?: TechRadarType) => {
     setRadarCategory(category);
