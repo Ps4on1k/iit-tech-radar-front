@@ -18,8 +18,8 @@ export const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка входа');
+    } catch {
+      setError('Ошибка входа');
     } finally {
       setLoading(false);
     }

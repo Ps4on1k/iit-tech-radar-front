@@ -17,13 +17,13 @@ export const HomePage: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       setLoading(true);
       setError(null);
       const result = await techRadarApi.getAll();
       setData(result || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Ошибка загрузки:', err);
       setError('Ошибка при загрузке данных');
       setData([]);
@@ -36,7 +36,7 @@ export const HomePage: React.FC = () => {
     if (isAuthenticated && data.length === 0 && !loading) {
       fetchData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, data.length, loading, fetchData]);
 
   const handleRadarFilter = useCallback((category?: TechRadarCategory, type?: TechRadarType) => {
     setRadarCategory(category);

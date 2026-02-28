@@ -45,7 +45,7 @@ export const UsersPage: React.FC = () => {
       const data = await authApi.getUsers();
       setUsers(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Ошибка загрузки пользователей');
     } finally {
       setLoading(false);

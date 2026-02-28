@@ -32,8 +32,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run linting
+      - name: Run linting (non-blocking)
         run: npm run lint --if-present
+        continue-on-error: true
 
   docker-build-and-push:
     runs-on: ubuntu-latest

@@ -82,9 +82,8 @@ export const ImportPage: React.FC = () => {
       if (!result.valid) {
         setError(`Найдено ошибок: ${result.invalidRecords}`);
       }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Ошибка валидации');
+    } catch {
+      setError('Ошибка валидации');
     } finally {
       setValidating(false);
     }
@@ -127,12 +126,8 @@ export const ImportPage: React.FC = () => {
         setImportResult(result.result || result);
         setError('Импорт завершен с ошибками');
       }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string; result?: ImportResult } } };
-      setError(error.response?.data?.error || 'Ошибка импорта');
-      if (error.response?.data?.result) {
-        setImportResult(error.response.data.result);
-      }
+    } catch {
+      setError('Ошибка импорта');
     } finally {
       setLoading(false);
     }
