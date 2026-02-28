@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User } from '../types';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Use relative path - nginx will proxy /api to backend
+const API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
