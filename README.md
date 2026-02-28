@@ -743,38 +743,6 @@ npm run build
 npm run preview
 ```
 
-### Деплой
-
-1. Собрать проект: `npm run build`
-2. Загрузить `dist/` на хостинг
-3. Настроить проксирование API запросов на backend
-
-**Пример nginx конфигурации:**
-```nginx
-server {
-  listen 80;
-  server_name tech-radar.example.com;
-
-  root /var/www/tech-radar/dist;
-  index index.html;
-
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  location /api {
-    proxy_pass http://localhost:5000;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_cache_bypass $http_upgrade;
-  }
-}
-```
-
----
-
 ## Docker развёртывание
 
 ### Сборка образа
@@ -786,22 +754,39 @@ docker build -t tech-radar-frontend .
 ### Запуск контейнера
 
 ```bash
-docker run -d -p 80:80 tech-radar-frontend
+docker run -d -p 3001:80 tech-radar-frontend
 ```
+
+**Важно:** Frontend использует nginx для проксирования `/api` запросов на backend.
+
+### API Proxy
+
+Все API запросы идут через `/api` (например, `/api/auth/login`). nginx автоматически проксирует их на backend:
+
+```nginx
+location /api {
+    proxy_pass http://backend:5000;
+    ...
+}
+```
+
+**В production** убедитесь что:
+1. Backend доступен по имени `backend` (Docker network)
+2. Или настройте `BACKEND_URL` переменную окружения
 
 ### Docker Compose
 
-Для развёртывания вместе с backend используйте [`DEPLOY.md`](./DEPLOY.md).
+Для развёртывания вместе с backend используйте [`DEPLOY.md`](../DEPLOY.md).
 
 ### GitHub Actions
 
 При пуше в `main/master` или создании тега автоматически собирается и публикуется Docker-образ в GHCR:
 
 ```
-ghcr.io/<username>/<repository>:latest
+ghcr.io/ps4on1k/iit-tech-radar-front:latest
 ```
 
-Подробная инструкция по развёртыванию доступна в [`DEPLOY.md`](./DEPLOY.md).
+Подробная инструкция в [`DEPLOY.md`](../DEPLOY.md).
 
 ---
 
