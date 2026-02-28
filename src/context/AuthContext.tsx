@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { AuthState } from '../types';
+import type { AuthState, User } from '../types';
 import { authApi } from '../services/api';
 
 interface AuthContextType extends AuthState {
@@ -74,5 +74,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export type { AuthState, User };
