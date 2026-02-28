@@ -11,7 +11,7 @@ on:
 env:
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ghcr.io/ps4on1k/iit-tech-radar-front
 
 jobs:
   build:
@@ -62,7 +62,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -92,7 +92,7 @@ jobs:
       - name: Build status
         run: |
           if [ "${{ needs.docker-build-and-push.result }}" == "success" ]; then
-            echo "✅ Docker image successfully built and pushed to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+            echo "✅ Docker image successfully built and pushed to ${{ env.IMAGE_NAME }}"
           else
             echo "❌ Docker build failed"
             exit 1
