@@ -754,14 +754,14 @@ npm run preview
 server {
   listen 80;
   server_name tech-radar.example.com;
-  
+
   root /var/www/tech-radar/dist;
   index index.html;
-  
+
   location / {
     try_files $uri $uri/ /index.html;
   }
-  
+
   location /api {
     proxy_pass http://localhost:5000;
     proxy_http_version 1.1;
@@ -772,6 +772,36 @@ server {
   }
 }
 ```
+
+---
+
+## Docker развёртывание
+
+### Сборка образа
+
+```bash
+docker build -t tech-radar-frontend .
+```
+
+### Запуск контейнера
+
+```bash
+docker run -d -p 80:80 tech-radar-frontend
+```
+
+### Docker Compose
+
+Для развёртывания вместе с backend используйте [`DEPLOY.md`](./DEPLOY.md).
+
+### GitHub Actions
+
+При пуше в `main/master` или создании тега автоматически собирается и публикуется Docker-образ в GHCR:
+
+```
+ghcr.io/<username>/<repository>:latest
+```
+
+Подробная инструкция по развёртыванию доступна в [`DEPLOY.md`](./DEPLOY.md).
 
 ---
 
