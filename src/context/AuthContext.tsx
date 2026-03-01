@@ -6,6 +6,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isAdminOrManager: boolean;
   isLoading: boolean;
 }
 
@@ -66,9 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = authState.user?.role === 'admin';
+  const isAdminOrManager = authState.user?.role === 'admin' || authState.user?.role === 'manager';
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, isAdmin, isLoading }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, isAdmin, isAdminOrManager, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

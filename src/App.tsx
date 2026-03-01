@@ -53,6 +53,32 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+// Компонент для защиты роутов для администраторов и менеджеров
+const ManagerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isAdminOrManager, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdminOrManager) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const AppRoutes: React.FC = () => {
   return (
     <>
@@ -78,9 +104,9 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/import"
           element={
-            <AdminRoute>
+            <ManagerRoute>
               <ImportPage />
-            </AdminRoute>
+            </ManagerRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

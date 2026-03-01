@@ -169,7 +169,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose, onUpdate }) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAdminOrManager } = useAuth();
   const isCreateMode = !entity;
   const [localEntity, setLocalEntity] = useState<TechRadarEntity | null>(
     entity || null
@@ -477,7 +477,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
           gap: '16px'
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {isAdmin || isCreateMode ? (
+            {isAdminOrManager || isCreateMode ? (
               <div>
                 <input
                   value={localEntity.name}
@@ -505,7 +505,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Версия:</span>
-              {isAdmin || isCreateMode ? (
+              {isAdminOrManager || isCreateMode ? (
                 <div>
                   <input
                     value={localEntity.version}
@@ -535,7 +535,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            {isAdmin && !isCreateMode && (
+            {isAdminOrManager && !isCreateMode && (
               <button
                 onClick={handleDelete}
                 disabled={saving}
@@ -553,7 +553,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                 🗑
               </button>
             )}
-            {(isAdmin || isCreateMode) && (
+            {(isAdminOrManager || isCreateMode) && (
               <button
                 onClick={isCreateMode ? handleSaveCreate : handleSaveEdit}
                 disabled={saving || !localEntity.name || !localEntity.version}
@@ -607,9 +607,9 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
 
         {/* Content */}
         <div style={{ padding: '24px' }}>
-          {/* Основная информация - редактирование для админа */}
+          {/* Основная информация - редактирование для админа и менеджера */}
           <Section title="Основная информация">
-            {isAdmin ? (
+            {isAdminOrManager ? (
               <>
                 <SelectRow
                   label="Тип"
@@ -707,7 +707,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
 
           {/* Описание */}
           <Section title="Описание">
-            {isAdmin ? (
+            {isAdminOrManager ? (
               <textarea
                 value={localEntity.description || ''}
                 onChange={(e) => updateField('description', e.target.value)}
@@ -724,7 +724,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
           {/* Даты */}
           <Section title="Даты">
             <InfoRow label="Первое добавление" value={localEntity.firstAdded} />
-            {isAdmin ? (
+            {isAdminOrManager ? (
               <>
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Последнее обновление</span>
@@ -768,19 +768,19 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             <InfoRow
               label="Владелец"
               value={localEntity.owner}
-              onEdit={isAdmin ? (v) => updateField('owner', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('owner', v) : undefined}
               error={fieldErrors.owner}
             />
             <EditableTags
               label="Заинтересованные стороны"
               values={localEntity.stakeholders}
-              onEdit={isAdmin ? (v) => updateField('stakeholders', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('stakeholders', v) : undefined}
             />
           </Section>
 
           {/* Технические характеристики */}
           <Section title="Технические характеристики">
-            {isAdmin ? (
+            {isAdminOrManager ? (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px solid #f3f4f6', padding: '8px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -844,7 +844,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
 
           {/* Метрики */}
           <Section title="Метрики">
-            {isAdmin ? (
+            {isAdminOrManager ? (
               <>
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Внедрение (%)</span>
@@ -904,7 +904,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             <EditableTags
               label="Зависимости (формат: name:version)"
               values={localEntity.dependencies?.map(d => `${d.name}:${d.version}${d.optional ? ':optional' : ''}`) || []}
-              onEdit={isAdmin ? (values) => {
+              onEdit={isAdminOrManager ? (values) => {
                 const deps = values.map(v => {
                   const parts = v.split(':');
                   return {
@@ -923,7 +923,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             <EditableTags
               label="Связанные технологии"
               values={localEntity.relatedTechnologies}
-              onEdit={isAdmin ? (v) => updateField('relatedTechnologies', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('relatedTechnologies', v) : undefined}
             />
           </Section>
 
@@ -932,7 +932,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             <EditableTags
               label="Альтернативы"
               values={localEntity.recommendedAlternatives}
-              onEdit={isAdmin ? (v) => updateField('recommendedAlternatives', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('recommendedAlternatives', v) : undefined}
             />
           </Section>
 
@@ -941,7 +941,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             <EditableTags
               label="Примеры использования"
               values={localEntity.usageExamples}
-              onEdit={isAdmin ? (v) => updateField('usageExamples', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('usageExamples', v) : undefined}
             />
           </Section>
 
@@ -951,12 +951,12 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
               <EditableTags
                 label="Уязвимости безопасности"
                 values={localEntity.securityVulnerabilities}
-                onEdit={isAdmin ? (v) => updateField('securityVulnerabilities', v) : undefined}
+                onEdit={isAdminOrManager ? (v) => updateField('securityVulnerabilities', v) : undefined}
               />
               <EditableTags
                 label="Стандарты соответствия"
                 values={localEntity.complianceStandards}
-                onEdit={isAdmin ? (v) => updateField('complianceStandards', v) : undefined}
+                onEdit={isAdminOrManager ? (v) => updateField('complianceStandards', v) : undefined}
               />
             </Section>
           )}
@@ -967,18 +967,18 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
               label="Документация"
               value={localEntity.documentationUrl}
               type="url"
-              onEdit={isAdmin ? (v) => updateField('documentationUrl', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('documentationUrl', v) : undefined}
             />
             <InfoRow
               label="Внутреннее руководство"
               value={localEntity.internalGuideUrl}
               type="url"
-              onEdit={isAdmin ? (v) => updateField('internalGuideUrl', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('internalGuideUrl', v) : undefined}
             />
             <InfoRow
               label="Путь обновления"
               value={localEntity.upgradePath}
-              onEdit={isAdmin ? (v) => updateField('upgradePath', v) : undefined}
+              onEdit={isAdminOrManager ? (v) => updateField('upgradePath', v) : undefined}
             />
           </Section>
 
@@ -994,3 +994,4 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
     </div>
   );
 };
+

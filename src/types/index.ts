@@ -7,7 +7,7 @@ export type SupportStatus = 'active' | 'limited' | 'end-of-life' | 'community-on
 export type CostFactor = 'free' | 'paid' | 'subscription' | 'enterprise';
 export type ContributionFrequency = 'frequent' | 'regular' | 'occasional' | 'rare' | 'none';
 export type PerformanceImpact = 'low' | 'medium' | 'high';
-export type UserRole = 'admin' | 'user';
+export type UserRole = 'admin' | 'user' | 'manager';
 
 export interface TechRadarEntity {
   id: string;

@@ -5,7 +5,7 @@ import { techRadarApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const HomePage: React.FC = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdminOrManager } = useAuth();
   const [data, setData] = useState<TechRadarEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +107,7 @@ export const HomePage: React.FC = () => {
         {/* Заголовок страницы */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Обзор технологического стэка</h1>
-          {isAdmin && (
+          {isAdminOrManager && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"

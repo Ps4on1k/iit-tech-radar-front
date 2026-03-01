@@ -9,7 +9,7 @@ interface FormData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'manager';
 }
 
 const initialFormData: FormData = {
@@ -230,10 +230,10 @@ export const UsersPage: React.FC = () => {
                       fontSize: '12px',
                       fontWeight: 500,
                       borderRadius: '4px',
-                      background: user.role === 'admin' ? '#dbeafe' : '#f3f4f6',
-                      color: user.role === 'admin' ? '#1e40af' : '#374151',
+                      background: user.role === 'admin' ? '#dbeafe' : user.role === 'manager' ? '#fef3c7' : '#f3f4f6',
+                      color: user.role === 'admin' ? '#1e40af' : user.role === 'manager' ? '#92400e' : '#374151',
                     }}>
-                      {user.role === 'admin' ? 'Администратор' : 'Пользователь'}
+                      {user.role === 'admin' ? 'Администратор' : user.role === 'manager' ? 'Менеджер' : 'Пользователь'}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '14px' }}>
@@ -379,10 +379,11 @@ export const UsersPage: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Роль</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' | 'manager' })}
                   style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
                 >
                   <option value="user">Пользователь</option>
+                  <option value="manager">Менеджер</option>
                   <option value="admin">Администратор</option>
                 </select>
               </div>

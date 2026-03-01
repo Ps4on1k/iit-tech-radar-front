@@ -49,6 +49,19 @@ export const Navbar: React.FC = () => {
               </Link>
             </div>
           )}
+          {auth.user?.role === 'manager' && (
+            <Link
+              to="/import"
+              style={{
+                fontSize: '14px',
+                color: isActive('/import') ? '#2563eb' : '#666',
+                textDecoration: 'none',
+                fontWeight: isActive('/import') ? 600 : 400,
+              }}
+            >
+              Импорт/Экспорт
+            </Link>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {auth.isAdmin && (
@@ -61,6 +74,18 @@ export const Navbar: React.FC = () => {
               color: '#1e40af',
             }}>
               Администратор
+            </span>
+          )}
+          {auth.user?.role === 'manager' && (
+            <span style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 500,
+              borderRadius: '4px',
+              background: '#dbeafe',
+              color: '#1e40af',
+            }}>
+              Менеджер
             </span>
           )}
           <span style={{ color: '#666', fontSize: '14px' }}>

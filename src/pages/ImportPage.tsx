@@ -21,7 +21,7 @@ interface ImportResult {
 }
 
 export const ImportPage: React.FC = () => {
-  const { isAdmin, isAuthenticated } = useAuth();
+  const { isAdminOrManager, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [jsonFile, setJsonFile] = useState<File | null>(null);
   const [jsonContent, setJsonContent] = useState<string>('');
@@ -174,7 +174,7 @@ export const ImportPage: React.FC = () => {
     }
   }, [shouldRedirect, navigate]);
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || !isAdminOrManager) {
     return <Navigate to="/" replace />;
   }
 
