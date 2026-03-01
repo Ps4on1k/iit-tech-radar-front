@@ -53,7 +53,8 @@ export const HomePage: React.FC = () => {
 
   const handleCloseModal = useCallback(() => {
     setSelectedEntity(null);
-  }, []);
+    fetchData(); // Обновляем данные после закрытия модального окна
+  }, [fetchData]);
 
   if (!isAuthenticated) {
     return null;

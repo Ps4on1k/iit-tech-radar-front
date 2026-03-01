@@ -218,6 +218,17 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
     { value: 'DevOps', label: 'DevOps' },
     { value: 'SaaS', label: 'SaaS' },
     { value: 'библиотека', label: 'Библиотека' },
+    { value: 'data engineering', label: 'Data Engineering' },
+    { value: 'AI', label: 'AI' },
+    { value: 'observability', label: 'Observability' },
+    { value: 'базы данных', label: 'Базы данных' },
+    { value: 'тестирование', label: 'Тестирование' },
+    { value: 'автотесты', label: 'Автотесты' },
+    { value: 'нагрузочные тесты', label: 'Нагрузочные тесты' },
+    { value: 'безопасность', label: 'Безопасность' },
+    { value: 'очереди', label: 'Очереди' },
+    { value: 'desktop', label: 'Desktop' },
+    { value: 'прочее', label: 'Прочее' },
   ];
 
   const categoryOptions = [

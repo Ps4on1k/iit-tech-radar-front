@@ -1,5 +1,5 @@
 export type TechRadarType = 'фреймворк' | 'библиотека' | 'язык программирования' | 'инструмент';
-export type TechRadarSubtype = 'фронтенд' | 'бэкенд' | 'мобильная разработка' | 'инфраструктура' | 'аналитика' | 'DevOps' | 'SaaS' | 'библиотека';
+export type TechRadarSubtype = 'фронтенд' | 'бэкенд' | 'мобильная разработка' | 'инфраструктура' | 'аналитика' | 'DevOps' | 'SaaS' | 'библиотека' | 'data engineering' | 'AI' | 'observability' | 'базы данных' | 'тестирование' | 'автотесты' | 'нагрузочные тесты' | 'безопасность' | 'очереди' | 'desktop' | 'прочее';
 export type TechRadarCategory = 'adopt' | 'trial' | 'assess' | 'hold' | 'drop';
 export type MaturityLevel = 'experimental' | 'active' | 'stable' | 'deprecated' | 'end-of-life';
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';

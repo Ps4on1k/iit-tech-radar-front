@@ -6,6 +6,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     token: null,
     isAuthenticated: false,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -35,7 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             token: null,
             isAuthenticated: false,
           });
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -61,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = authState.user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, isAdmin, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
