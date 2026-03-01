@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
-import type { User } from '../types';
+import type { User, UserRole } from '../types';
 import { Navigate } from 'react-router-dom';
 
 interface FormData {
@@ -9,7 +9,7 @@ interface FormData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'user' | 'manager';
+  role: UserRole;
 }
 
 const initialFormData: FormData = {

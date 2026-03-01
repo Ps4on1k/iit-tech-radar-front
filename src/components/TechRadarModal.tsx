@@ -54,7 +54,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text', 
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexDirection: 'column', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '8px', flex: 1, flexDirection: 'column', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
             <span style={{ fontSize: '13px', color: type === 'url' ? '#2563eb' : '#1f2937', textDecoration: type === 'url' ? 'underline' : 'none' }}>
               {type === 'url' && value ? (
