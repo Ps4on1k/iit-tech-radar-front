@@ -5,11 +5,12 @@ import { techRadarApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const HomePage: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const [data, setData] = useState<TechRadarEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<TechRadarEntity | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Фильтры из радара
   const [radarCategory, setRadarCategory] = useState<TechRadarCategory | undefined>();
@@ -50,11 +51,6 @@ export const HomePage: React.FC = () => {
   const handleRowClick = useCallback((entity: TechRadarEntity) => {
     setSelectedEntity(entity);
   }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setSelectedEntity(null);
-    fetchData(); // Обновляем данные после закрытия модального окна
-  }, [fetchData]);
 
   if (!isAuthenticated) {
     return null;
@@ -109,7 +105,17 @@ export const HomePage: React.FC = () => {
     <div className="min-h-screen bg-gray-100">
       <main className="max-w-[100%] mx-auto px-4 py-8">
         {/* Заголовок страницы */}
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Обзор технологического стэка</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Обзор технологического стэка</h1>
+          {isAdmin && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <span>+</span> Добавить технологию
+            </button>
+          )}
+        </div>
         
         {/* Радар */}
         <div className="mb-8">
@@ -162,7 +168,11 @@ export const HomePage: React.FC = () => {
       </main>
 
       {selectedEntity && (
-        <TechRadarModal entity={selectedEntity} onClose={handleCloseModal} />
+        <TechRadarModal entity={selectedEntity} onClose={() => setSelectedEntity(null)} onUpdate={fetchData} />
+      )}
+      
+      {isCreateModalOpen && (
+        <TechRadarModal entity={null} onClose={() => setIsCreateModalOpen(false)} onUpdate={fetchData} />
       )}
     </div>
   );

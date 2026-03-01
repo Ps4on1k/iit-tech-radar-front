@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { techRadarApi } from '../services/api';
 import type { TechRadarEntity, TechRadarType, TechRadarSubtype, TechRadarCategory, MaturityLevel, RiskLevel, SupportStatus, CostFactor, ContributionFrequency, PerformanceImpact } from '../types';
+import { validateTechRadarEntity } from '../utils/validation';
 
 interface TechRadarModalProps {
-  entity: TechRadarEntity | null;
+  entity?: TechRadarEntity | null; // Если null/undefined - режим создания
   onClose: () => void;
   onUpdate?: () => void;
 }
@@ -14,9 +15,10 @@ interface InfoRowProps {
   value?: string | number;
   onEdit?: (value: string) => void;
   type?: 'text' | 'url';
+  error?: string;
 }
 
-const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text' }) => {
+const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text', error }) => {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(value || ''));
 
@@ -32,39 +34,45 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text' }
     setEditing(false);
   };
 
-  if (!value && !editing) return null;
+  if (!value && !editing && !error) return null;
 
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+    <div style={{ display: 'flex', borderBottom: error ? '1px solid #ef4444' : '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
       <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>{label}</span>
       {editing ? (
-        <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+        <div style={{ display: 'flex', gap: '8px', flex: 1, flexDirection: 'column' }}>
           <input
             type={type}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: '4px' }}
+            style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: error ? '1px solid #ef4444' : '1px solid #3b82f6', borderRadius: '4px' }}
           />
-          <button onClick={handleSave} style={{ padding: '4px 8px', fontSize: '12px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
-          <button onClick={handleCancel} style={{ padding: '4px 8px', fontSize: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
+          {error && <p style={{ margin: 0, fontSize: '11px', color: '#ef4444' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={handleSave} style={{ padding: '4px 8px', fontSize: '12px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
+            <button onClick={handleCancel} style={{ padding: '4px 8px', fontSize: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-          <span style={{ fontSize: '13px', color: type === 'url' ? '#2563eb' : '#1f2937', textDecoration: type === 'url' ? 'underline' : 'none' }}>
-            {type === 'url' && value ? (
-              <a href={String(value)} target="_blank" rel="noopener noreferrer">{value}</a>
-            ) : (
-              value
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+            <span style={{ fontSize: '13px', color: type === 'url' ? '#2563eb' : '#1f2937', textDecoration: type === 'url' ? 'underline' : 'none' }}>
+              {type === 'url' && value ? (
+                <a href={String(value)} target="_blank" rel="noopener noreferrer">{value}</a>
+              ) : (
+                value
+              )}
+            </span>
+            {onEdit && (
+              <button
+                onClick={() => setEditing(true)}
+                style={{ padding: '2px 6px', fontSize: '11px', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                ✎
+              </button>
             )}
-          </span>
-          {onEdit && (
-            <button
-              onClick={() => setEditing(true)}
-              style={{ padding: '2px 6px', fontSize: '11px', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              ✎
-            </button>
-          )}
+          </div>
+          {error && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#ef4444' }}>{error}</p>}
         </div>
       )}
     </div>
@@ -162,24 +170,123 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose, onUpdate }) => {
   const { isAdmin } = useAuth();
-  const [localEntity, setLocalEntity] = useState<TechRadarEntity | null>(entity);
+  const isCreateMode = !entity;
+  const [localEntity, setLocalEntity] = useState<TechRadarEntity | null>(
+    entity || null
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Инициализация новой сущности для режима создания
+  const createEmptyEntity = (): TechRadarEntity => ({
+    id: undefined as any, // ID будет сгенерирован на бэкенде
+    name: '',
+    version: '',
+    type: 'библиотека',
+    subtype: undefined,
+    category: 'assess',
+    firstAdded: new Date().toISOString().split('T')[0],
+    owner: '',
+    maturity: 'active',
+    riskLevel: 'medium',
+    license: '',
+    supportStatus: 'active',
+    businessCriticality: 'medium',
+    vendorLockIn: false,
+  });
 
   React.useEffect(() => {
-    setLocalEntity(entity);
-  }, [entity]);
+    if (entity) {
+      setLocalEntity(entity);
+    } else if (isCreateMode) {
+      setLocalEntity(createEmptyEntity());
+    }
+    setFieldErrors({});
+    setHasChanges(false);
+  }, [entity, isCreateMode]);
 
   if (!localEntity) return null;
 
-  const updateField = async (field: keyof TechRadarEntity, value: any) => {
+  // Обновление поля (только локально, без отправки на сервер)
+  const updateField = (field: keyof TechRadarEntity, value: any) => {
+    setError(null);
+    const updatedEntity = { ...localEntity, [field]: value };
+    setLocalEntity(updatedEntity);
+    setHasChanges(true);
+    // Очищаем ошибку поля при изменении
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
+  const handleSaveCreate = async () => {
+    if (!isCreateMode) return;
+
     try {
       setSaving(true);
       setError(null);
-      const updatedEntity = { ...localEntity, [field]: value };
-      await techRadarApi.update(localEntity.id, { [field]: value });
-      setLocalEntity(updatedEntity);
+
+      // Полная валидация сущности
+      const validationResult = validateTechRadarEntity(localEntity, false);
+
+      if (!validationResult.valid) {
+        setFieldErrors(validationResult.errors.reduce((acc, err) => {
+          if (err.field) {
+            acc[err.field] = err.message;
+          }
+          return acc;
+        }, {} as Record<string, string>));
+        setError('Пожалуйста, исправьте ошибки валидации');
+        return;
+      }
+
+      // ID генерируется на бэкенде автоматически (UUID), удаляем его из payload
+      const { id, ...entityToSave } = localEntity;
+
+      await techRadarApi.create(entityToSave as TechRadarEntity);
       onUpdate?.();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Ошибка создания');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Сохранение изменений для режима редактирования
+  const handleSaveEdit = async () => {
+    if (isCreateMode) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      // Полная валидация сущности (isUpdate=true)
+      const validationResult = validateTechRadarEntity(localEntity, true);
+      
+      if (!validationResult.valid) {
+        setFieldErrors(validationResult.errors.reduce((acc, err) => {
+          if (err.field) {
+            acc[err.field] = err.message;
+          }
+          return acc;
+        }, {} as Record<string, string>));
+        setError('Пожалуйста, исправьте ошибки валидации');
+        return;
+      }
+
+      // Отправляем все изменения на сервер
+      const updatePayload: Partial<TechRadarEntity> = { ...localEntity };
+      delete (updatePayload as any).createdAt;
+      delete (updatePayload as any).updatedAt;
+
+      await techRadarApi.update(localEntity.id, updatePayload);
+      onUpdate?.();
+      onClose();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Ошибка сохранения');
     } finally {
@@ -188,8 +295,13 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
   };
 
   const handleDelete = async () => {
+    if (isCreateMode) {
+      onClose();
+      return;
+    }
+
     if (!confirm(`Вы уверены, что хотите удалить технологию "${localEntity.name}"?`)) return;
-    
+
     try {
       setSaving(true);
       await techRadarApi.delete(localEntity.id);
@@ -200,6 +312,53 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
     } finally {
       setSaving(false);
     }
+  };
+
+  const getFieldLabel = (field: string): string => {
+    const labels: Record<string, string> = {
+      name: 'Название',
+      version: 'Версия',
+      versionReleaseDate: 'Дата выпуска версии',
+      type: 'Тип',
+      subtype: 'Подтип',
+      category: 'Категория',
+      description: 'Описание',
+      firstAdded: 'Дата первого добавления',
+      lastUpdated: 'Дата последнего обновления',
+      owner: 'Владелец',
+      stakeholders: 'Заинтересованные стороны',
+      dependencies: 'Зависимости',
+      maturity: 'Зрелость',
+      riskLevel: 'Уровень риска',
+      license: 'Лицензия',
+      usageExamples: 'Примеры использования',
+      documentationUrl: 'Документация',
+      internalGuideUrl: 'Внутреннее руководство',
+      adoptionRate: 'Процент внедрения',
+      recommendedAlternatives: 'Рекомендуемые альтернативы',
+      relatedTechnologies: 'Связанные технологии',
+      endOfLifeDate: 'Дата окончания поддержки',
+      supportStatus: 'Статус поддержки',
+      upgradePath: 'Путь обновления',
+      performanceImpact: 'Влияние на производительность',
+      resourceRequirements: 'Требования к ресурсам',
+      'resourceRequirements.cpu': 'CPU',
+      'resourceRequirements.memory': 'Память',
+      'resourceRequirements.storage': 'Хранилище',
+      securityVulnerabilities: 'Уязвимости безопасности',
+      complianceStandards: 'Стандарты соответствия',
+      communitySize: 'Размер сообщества',
+      contributionFrequency: 'Частота вклада',
+      popularityIndex: 'Индекс популярности',
+      compatibility: 'Совместимость',
+      'compatibility.os': 'ОС',
+      'compatibility.browsers': 'Браузеры',
+      'compatibility.frameworks': 'Фреймворки',
+      costFactor: 'Стоимость',
+      vendorLockIn: 'Привязка к вендору',
+      businessCriticality: 'Критичность для бизнеса',
+    };
+    return labels[field] || field;
   };
 
   const typeOptions = [
@@ -314,35 +473,69 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)'
+          background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)',
+          gap: '16px'
         }}>
-          <div>
-            {isAdmin ? (
-              <input
-                value={localEntity.name}
-                onChange={(e) => updateField('name', e.target.value)}
-                style={{ fontSize: '22px', fontWeight: 'bold', border: '1px solid transparent', background: 'transparent', padding: '4px 8px', borderRadius: '4px' }}
-              />
-            ) : (
-              <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0, color: '#1f2937' }}>{localEntity.name}</h2>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-              {isAdmin ? (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {isAdmin || isCreateMode ? (
+              <div>
                 <input
-                  value={localEntity.version}
-                  onChange={(e) => updateField('version', e.target.value)}
-                  style={{ fontSize: '14px', color: '#6b7280', border: '1px solid transparent', background: 'transparent', padding: '2px 4px' }}
+                  value={localEntity.name}
+                  onChange={(e) => updateField('name', e.target.value)}
+                  placeholder="Название технологии"
+                  style={{
+                    fontSize: '22px',
+                    fontWeight: 'bold',
+                    border: fieldErrors.name ? '2px solid #ef4444' : '2px solid #3b82f6',
+                    background: 'white',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    width: 'calc(100% - 16px)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    color: '#1f2937'
+                  }}
                 />
+                {fieldErrors.name && (
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#ef4444' }}>{fieldErrors.name}</p>
+                )}
+              </div>
+            ) : (
+              <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0, color: '#1f2937' }}>{localEntity.name || 'Новая технология'}</h2>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Версия:</span>
+              {isAdmin || isCreateMode ? (
+                <div>
+                  <input
+                    value={localEntity.version}
+                    onChange={(e) => updateField('version', e.target.value)}
+                    placeholder="Например: 1.0.0"
+                    style={{
+                      fontSize: '14px',
+                      border: fieldErrors.version ? '2px solid #ef4444' : '1px solid #3b82f6',
+                      background: 'white',
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      minWidth: '120px',
+                      outline: 'none',
+                      color: '#1f2937'
+                    }}
+                  />
+                  {fieldErrors.version && (
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#ef4444' }}>{fieldErrors.version}</p>
+                  )}
+                </div>
               ) : (
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Версия: {localEntity.version}</p>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{localEntity.version}</p>
               )}
               {localEntity.versionReleaseDate && (
                 <span style={{ fontSize: '12px', color: '#9ca3af' }}>• {localEntity.versionReleaseDate}</span>
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {isAdmin && (
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            {isAdmin && !isCreateMode && (
               <button
                 onClick={handleDelete}
                 disabled={saving}
@@ -358,6 +551,24 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                 title="Удалить технологию"
               >
                 🗑
+              </button>
+            )}
+            {(isAdmin || isCreateMode) && (
+              <button
+                onClick={isCreateMode ? handleSaveCreate : handleSaveEdit}
+                disabled={saving || !localEntity.name || !localEntity.version}
+                style={{
+                  background: (saving || !localEntity.name || !localEntity.version) ? '#9ca3af' : '#22c55e',
+                  border: 'none',
+                  fontSize: '14px',
+                  cursor: (saving || !localEntity.name || !localEntity.version) ? 'not-allowed' : 'pointer',
+                  color: 'white',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                }}
+                title={isCreateMode ? 'Создать технологию' : 'Сохранить изменения'}
+              >
+                {isCreateMode ? '✓ Создать' : (hasChanges ? '✓ Сохранить' : '✓')}
               </button>
             )}
             <button
@@ -379,9 +590,18 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
         </div>
 
         {/* Error message */}
-        {error && (
+        {(error || Object.keys(fieldErrors).length > 0) && (
           <div style={{ padding: '12px 20px', background: '#fee2e2', color: '#dc2626', fontSize: '14px' }}>
-            {error}
+            {error && <p style={{ margin: '0 0 8px 0', fontWeight: '600' }}>{error}</p>}
+            {Object.keys(fieldErrors).length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                {Object.entries(fieldErrors).map(([field, message]) => (
+                  <li key={field} style={{ marginTop: '4px' }}>
+                    <strong>{getFieldLabel(field)}:</strong> {message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -449,6 +669,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                   label="Лицензия"
                   value={localEntity.license}
                   onEdit={(v) => updateField('license', v)}
+                  error={fieldErrors.license}
                 />
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Привязка к вендору</span>
@@ -548,6 +769,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
               label="Владелец"
               value={localEntity.owner}
               onEdit={isAdmin ? (v) => updateField('owner', v) : undefined}
+              error={fieldErrors.owner}
             />
             <EditableTags
               label="Заинтересованные стороны"
