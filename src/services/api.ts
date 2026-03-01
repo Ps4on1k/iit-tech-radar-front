@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User } from '../types';
+import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole } from '../types';
 
 // Use relative path - nginx will proxy /api to backend
 const API_BASE_URL = '/api';
@@ -100,7 +100,7 @@ export const authApi = {
     return response.data;
   },
 
-  createUser: async (userData: { email: string; password: string; firstName: string; lastName: string; role: 'admin' | 'user' }) => {
+  createUser: async (userData: { email: string; password: string; firstName: string; lastName: string; role: UserRole }) => {
     const response = await api.post('/auth/users', userData);
     return response.data;
   },
