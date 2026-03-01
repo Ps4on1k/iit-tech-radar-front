@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TechRadarChart, TechRadarTable, TechRadarModal, PageHeader } from '../components';
+import { TechRadarChart, TechRadarTable, TechRadarModal } from '../components';
 import type { TechRadarEntity, TechRadarCategory, TechRadarType } from '../types';
 import { techRadarApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ export const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<TechRadarEntity | null>(null);
-  
+
   // Фильтры из радара
   const [radarCategory, setRadarCategory] = useState<TechRadarCategory | undefined>();
   const [radarType, setRadarType] = useState<TechRadarType | undefined>();
@@ -62,7 +62,6 @@ export const HomePage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <PageHeader title="Обзор технологического стэка" />
         <div className="flex items-center justify-center h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -76,7 +75,6 @@ export const HomePage: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <PageHeader title="Обзор технологического стэка" />
         <div className="flex items-center justify-center h-[calc(100vh-140px)]">
           <div className="text-center text-red-600">
             <p className="text-xl">{error}</p>
@@ -108,11 +106,13 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <PageHeader title="Обзор технологического стэка" />
       <main className="max-w-[100%] mx-auto px-4 py-8">
+        {/* Заголовок страницы */}
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Обзор технологического стэка</h1>
+        
         {/* Радар */}
         <div className="mb-8">
-          <TechRadarChart 
+          <TechRadarChart
             data={data}
             radarCategory={radarCategory}
             radarType={radarType}
@@ -150,8 +150,8 @@ export const HomePage: React.FC = () => {
           <h2 className="text-xl font-bold mb-4">
             Технологии {(radarCategory || radarType) ? `(отфильтровано: ${filteredData.length})` : ''}
           </h2>
-          <TechRadarTable 
-            data={filteredData} 
+          <TechRadarTable
+            data={filteredData}
             onRowClick={handleRowClick}
             radarCategory={radarCategory}
             radarType={radarType}

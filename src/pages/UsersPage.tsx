@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import type { User } from '../types';
 import { Navigate } from 'react-router-dom';
-import { PageHeader } from '../components';
 
 interface FormData {
   email: string;
@@ -167,7 +166,6 @@ export const UsersPage: React.FC = () => {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-        <PageHeader title="Управление пользователями" subtitle="Создание, редактирование и удаление пользователей" />
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -177,25 +175,26 @@ export const UsersPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <PageHeader title="Управление пользователями" subtitle="Создание, редактирование и удаление пользователей" />
-      <div style={{ maxWidth: '1400px', margin: '24px auto', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button
-          onClick={handleOpenCreate}
-          style={{
-            padding: '10px 20px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: 'white',
-            background: '#2563eb',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-          }}
-        >
-          + Создать пользователя
-        </button>
-      </div>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
+      <div style={{ maxWidth: '1400px', margin: '24px auto', padding: '0 24px' }}>
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Управление пользователями</h1>
+        <p className="text-gray-600 mb-4">Создание, редактирование и удаление пользователей</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+          <button
+            onClick={handleOpenCreate}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: 'white',
+              background: '#2563eb',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            + Создать пользователя
+          </button>
+        </div>
         {successMessage && (
           <div style={{ padding: '12px 16px', background: '#d1fae5', color: '#065f46', borderRadius: '6px', marginBottom: '16px' }}>
             {successMessage}

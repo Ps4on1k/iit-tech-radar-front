@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { VersionModal } from './VersionModal';
 
 export const Navbar: React.FC = () => {
   const auth = useAuth();
   const location = useLocation();
+  const [showVersionModal, setShowVersionModal] = useState(false);
 
   if (!auth.isAuthenticated) {
     return null;
@@ -48,7 +50,7 @@ export const Navbar: React.FC = () => {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {auth.isAdmin && (
             <span style={{
               padding: '4px 10px',
@@ -65,6 +67,30 @@ export const Navbar: React.FC = () => {
             {auth.user?.firstName} {auth.user?.lastName}
           </span>
           <button
+            onClick={() => {
+              console.log('Version button clicked!');
+              setShowVersionModal(true);
+            }}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: '#fff',
+              background: '#2563eb',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+            title="О системе (версии)"
+          >
+            ?
+          </button>
+          <button
             onClick={() => auth.logout()}
             style={{
               padding: '8px 16px',
@@ -79,6 +105,7 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
       </div>
+      <VersionModal isOpen={showVersionModal} onClose={() => setShowVersionModal(false)} />
     </nav>
   );
 };

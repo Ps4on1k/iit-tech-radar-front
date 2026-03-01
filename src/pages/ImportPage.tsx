@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { importApi } from '../services/api';
 import type { TechRadarEntity } from '../types';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { PageHeader } from '../components';
 
 interface ValidationResult {
   valid: boolean;
@@ -181,26 +180,27 @@ export const ImportPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <PageHeader title="Импорт/Экспорт техрадара" subtitle="Загрузка данных из JSON файла или выгрузка текущих данных" />
-      <div style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button
-          onClick={handleExport}
-          disabled={loading}
-          style={{
-            padding: '10px 20px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: 'white',
-            background: loading ? '#9ca3af' : '#059669',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? 'Экспорт...' : 'Экспортировать JSON'}
-        </button>
-      </div>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
+      <div style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 24px' }}>
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Импорт/Экспорт техрадара</h1>
+        <p className="text-gray-600 mb-4">Загрузка данных из JSON файла или выгрузка текущих данных</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+          <button
+            onClick={handleExport}
+            disabled={loading}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: 'white',
+              background: loading ? '#9ca3af' : '#059669',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Экспорт...' : 'Экспортировать JSON'}
+          </button>
+        </div>
         {/* Upload Section */}
         <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>Загрузка JSON файла</h2>

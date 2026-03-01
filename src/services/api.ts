@@ -155,3 +155,10 @@ export const importApi = {
     return response.data;
   },
 };
+
+export const versionApi = {
+  getVersion: async (): Promise<{ version: string; name: string }> => {
+    const response = await api.get('/version');
+    return response.data;
+  },
+};
