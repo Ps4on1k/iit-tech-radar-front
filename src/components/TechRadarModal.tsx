@@ -665,12 +665,22 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                   options={performanceImpactOptions}
                   onChange={(v) => updateField('performanceImpact', v as PerformanceImpact)}
                 />
-                <InfoRow
-                  label="Лицензия"
-                  value={localEntity.license}
-                  onEdit={(v) => updateField('license', v)}
-                  error={fieldErrors.license}
-                />
+                {isAdminOrManager ? (
+                  <>
+                    <div style={{ display: 'flex', borderBottom: fieldErrors.license ? '1px solid #ef4444' : '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+                      <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Лицензия</span>
+                      <input
+                        value={localEntity.license}
+                        onChange={(e) => updateField('license', e.target.value)}
+                        placeholder="Например: MIT"
+                        style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: fieldErrors.license ? '1px solid #ef4444' : '1px solid #3b82f6', borderRadius: '4px' }}
+                      />
+                    </div>
+                    {fieldErrors.license && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#ef4444' }}>{fieldErrors.license}</p>}
+                  </>
+                ) : (
+                  <InfoRow label="Лицензия" value={localEntity.license} />
+                )}
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Привязка к вендору</span>
                   <button
@@ -765,12 +775,22 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
 
           {/* Владелец и команда */}
           <Section title="Владелец и команда">
-            <InfoRow
-              label="Владелец"
-              value={localEntity.owner}
-              onEdit={isAdminOrManager ? (v) => updateField('owner', v) : undefined}
-              error={fieldErrors.owner}
-            />
+            {isAdminOrManager ? (
+              <>
+                <div style={{ display: 'flex', borderBottom: fieldErrors.owner ? '1px solid #ef4444' : '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+                  <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Владелец</span>
+                  <input
+                    value={localEntity.owner}
+                    onChange={(e) => updateField('owner', e.target.value)}
+                    placeholder="Например: Frontend Team"
+                    style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: fieldErrors.owner ? '1px solid #ef4444' : '1px solid #3b82f6', borderRadius: '4px' }}
+                  />
+                </div>
+                {fieldErrors.owner && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#ef4444' }}>{fieldErrors.owner}</p>}
+              </>
+            ) : (
+              <InfoRow label="Владелец" value={localEntity.owner} />
+            )}
             <EditableTags
               label="Заинтересованные стороны"
               values={localEntity.stakeholders}
