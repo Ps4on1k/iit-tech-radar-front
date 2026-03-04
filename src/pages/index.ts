@@ -3,3 +3,4 @@ export { LoginPage } from './LoginPage';
 export { AuthCallbackPage } from './AuthCallbackPage';
 export { UsersPage } from './UsersPage';
 export { ImportPage } from './ImportPage';
+export { AuditLogPage } from './AuditLogPage';

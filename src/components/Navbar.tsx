@@ -37,6 +37,17 @@ export const Navbar: React.FC = () => {
                 Пользователи
               </Link>
               <Link
+                to="/audit"
+                style={{
+                  fontSize: '14px',
+                  color: isActive('/audit') ? '#2563eb' : '#666',
+                  textDecoration: 'none',
+                  fontWeight: isActive('/audit') ? 600 : 400,
+                }}
+              >
+                Аудит
+              </Link>
+              <Link
                 to="/import"
                 style={{
                   fontSize: '14px',

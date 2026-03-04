@@ -20,6 +20,45 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface AuditLog {
+  id: string;
+  userId?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'IMPORT' | 'EXPORT' | 'PASSWORD_CHANGE';
+  entity: 'TechRadar' | 'User' | 'Import' | 'Auth';
+  entityId?: string;
+  ipAddress?: string;
+  details?: Record<string, any>;
+  status: 'SUCCESS' | 'FAILURE';
+  timestamp: string;
+}
+
+export interface AuditLogFilter {
+  userId?: string;
+  action?: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'IMPORT' | 'EXPORT' | 'PASSWORD_CHANGE';
+  entity?: 'TechRadar' | 'User' | 'Import' | 'Auth';
+  status?: 'SUCCESS' | 'FAILURE';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface PaginatedAuditLogs {
+  data: AuditLog[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface AuditStatistics {
+  total: number;
+  byAction: Record<string, number>;
+  byEntity: Record<string, number>;
+  byStatus: Record<string, number>;
+  last7Days: Array<{ date: string; count: number }>;
+}
+
 export const techRadarApi = {
   getAll: async (): Promise<TechRadarEntity[]> => {
     const response = await api.get('/tech-radar');
@@ -159,6 +198,34 @@ export const importApi = {
 export const versionApi = {
   getVersion: async (): Promise<{ version: string; name: string }> => {
     const response = await api.get('/version');
+    return response.data;
+  },
+};
+
+export const auditApi = {
+  getLogs: async (filter: AuditLogFilter = {}, page: number = 1, limit: number = 20): Promise<PaginatedAuditLogs> => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    
+    if (filter.userId) params.append('userId', filter.userId);
+    if (filter.action) params.append('action', filter.action);
+    if (filter.entity) params.append('entity', filter.entity);
+    if (filter.status) params.append('status', filter.status);
+    if (filter.startDate) params.append('startDate', filter.startDate);
+    if (filter.endDate) params.append('endDate', filter.endDate);
+    
+    const response = await api.get(`/audit?${params.toString()}`);
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<AuditLog> => {
+    const response = await api.get(`/audit/${id}`);
+    return response.data;
+  },
+
+  getStatistics: async (): Promise<AuditStatistics> => {
+    const response = await api.get('/audit/statistics');
     return response.data;
   },
 };

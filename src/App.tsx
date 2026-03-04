@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { HomePage, LoginPage, UsersPage, ImportPage } from './pages';
+import { HomePage, LoginPage, UsersPage, ImportPage, AuditLogPage } from './pages';
 import { Navbar } from './components';
 import './App.css';
 
@@ -107,6 +107,14 @@ const AppRoutes: React.FC = () => {
             <ManagerRoute>
               <ImportPage />
             </ManagerRoute>
+          }
+        />
+        <Route
+          path="/audit"
+          element={
+            <AdminRoute>
+              <AuditLogPage />
+            </AdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
