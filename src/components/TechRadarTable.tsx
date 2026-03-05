@@ -24,7 +24,7 @@ const RISK_COLORS: Record<string, string> = {
   critical: '#FF4444',
 };
 
-type SortField = 'name' | 'version' | 'category' | 'riskLevel' | 'type' | 'subtype' | 'license' | 'owner';
+type SortField = 'name' | 'version' | 'category' | 'riskLevel' | 'type' | 'subtype' | 'license' | 'owner' | 'versionToUpdate';
 type SortOrder = 'asc' | 'desc';
 
 export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCategory, radarType, onRowClick, onRadarFilter }) => {
@@ -100,61 +100,61 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <span style={{ color: '#d1d5db', marginLeft: '4px' }}>⇅</span>;
-    return <span style={{ marginLeft: '4px' }}>{sortOrder === 'asc' ? '↑' : '↓'}</span>;
+    if (sortField !== field) return <span className="text-gray-300 dark:text-gray-600 ml-1">⇅</span>;
+    return <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
   };
 
   if (!data || data.length === 0) {
-    return <p style={{ color: '#666', textAlign: 'center', padding: '20px' }}>Нет данных</p>;
+    return <p className="text-gray-600 dark:text-gray-400 text-center py-5">Нет данных</p>;
   }
 
   return (
-    <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+    <div className="bg-white dark:bg-[#16213e] rounded-lg overflow-hidden shadow-md transition-colors duration-200">
       {/* Индикатор активных фильтров радара */}
       {(radarCategory || radarType) && (
-        <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '1px solid #dbeafe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex justify-between items-center">
+          <div className="flex gap-2 flex-wrap">
             {radarCategory && (
-              <span style={{ padding: '4px 10px', background: CATEGORY_COLORS[radarCategory] + '20', color: CATEGORY_COLORS[radarCategory], borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: CATEGORY_COLORS[radarCategory] + '20', color: CATEGORY_COLORS[radarCategory] }}>
                 Категория: {radarCategory}
               </span>
             )}
             {radarType && (
-              <span style={{ padding: '4px 10px', background: '#3b82f620', color: '#3b82f6', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
                 Тип: {radarType}
               </span>
             )}
           </div>
           <button
             onClick={clearFilters}
-            style={{ padding: '4px 10px', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+            className="px-2.5 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 border-none rounded cursor-pointer transition-colors"
           >
             ✕ Сбросить
           </button>
         </div>
       )}
-      
-      <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         {/* Фильтры в порядке колонок */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '8px', marginBottom: '12px' }}>
+        <div className="grid grid-cols-8 gap-2 mb-3">
           <input
             type="text"
             placeholder="Название..."
             value={filters.name}
             onChange={(e) => { setFilters({ ...filters, name: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <input
             type="text"
             placeholder="Версия..."
             value={filters.version}
             onChange={(e) => { setFilters({ ...filters, version: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <select
             value={filters.category}
             onChange={(e) => { setFilters({ ...filters, category: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Все категории</option>
             {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -162,7 +162,7 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
           <select
             value={filters.riskLevel}
             onChange={(e) => { setFilters({ ...filters, riskLevel: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Все риски</option>
             {uniqueRisks.map(r => <option key={r} value={r}>{r}</option>)}
@@ -170,7 +170,7 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
           <select
             value={filters.type}
             onChange={(e) => { setFilters({ ...filters, type: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Все типы</option>
             {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
@@ -178,7 +178,7 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
           <select
             value={filters.subtype}
             onChange={(e) => { setFilters({ ...filters, subtype: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Все подтипы</option>
             {uniqueSubtypes.map(s => <option key={s} value={s}>{s}</option>)}
@@ -188,112 +188,153 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
             placeholder="Лицензия..."
             value={filters.license}
             onChange={(e) => { setFilters({ ...filters, license: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <input
             type="text"
             placeholder="Владелец..."
             value={filters.owner}
             onChange={(e) => { setFilters({ ...filters, owner: e.target.value }); setPage(1); }}
-            style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: '#6b7280' }}>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
             Найдено: {filteredData.length} из {data.length}
           </span>
           <button
             onClick={clearFilters}
-            style={{ padding: '6px 12px', fontSize: '13px', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#374151' }}
+            className="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 border-none rounded cursor-pointer text-gray-700 dark:text-gray-300 transition-colors"
           >
             Сбросить фильтры
           </button>
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
-          <thead style={{ background: '#f9fafb' }}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1000px] border-collapse">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th onClick={() => handleSort('name')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('name')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Название <SortIcon field="name" />
               </th>
-              <th onClick={() => handleSort('version')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('version')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Версия <SortIcon field="version" />
               </th>
-              <th onClick={() => handleSort('category')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('versionToUpdate')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                Обновление <SortIcon field="versionToUpdate" />
+              </th>
+              <th onClick={() => handleSort('category')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Категория <SortIcon field="category" />
               </th>
-              <th onClick={() => handleSort('riskLevel')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('riskLevel')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Риск <SortIcon field="riskLevel" />
               </th>
-              <th onClick={() => handleSort('type')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('type')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Тип <SortIcon field="type" />
               </th>
-              <th onClick={() => handleSort('subtype')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('subtype')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Подтип <SortIcon field="subtype" />
               </th>
-              <th onClick={() => handleSort('license')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('license')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Лицензия <SortIcon field="license" />
               </th>
-              <th onClick={() => handleSort('owner')} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '11px', fontWeight: '600', color: '#6b7280', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <th onClick={() => handleSort('owner')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Владелец <SortIcon field="owner" />
               </th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.map((entity) => (
-              <tr 
+              <tr
                 key={entity.id}
                 onClick={() => onRowClick?.(entity)}
-                style={{ borderBottom: '1px solid #e5e7eb', cursor: onRowClick ? 'pointer' : 'default' }}
-                onMouseEnter={(e) => { if (onRowClick) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseLeave={(e) => { if (onRowClick) e.currentTarget.style.background = 'white'; }}
+                className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''}`}
               >
-                <td style={{ padding: '10px 12px', fontSize: '13px' }}>
-                  <span style={{ fontWeight: '500' }}>{entity.name}</span>
+                <td className="px-3 py-2.5 text-sm">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{entity.name}</span>
                 </td>
-                <td style={{ padding: '10px 12px', fontSize: '12px' }}>
-                  <span style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>{entity.version}</span>
+                <td className="px-3 py-2.5 text-xs">
+                  <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-gray-900 dark:text-gray-100">{entity.version}</span>
                 </td>
-                <td style={{ padding: '10px 12px', fontSize: '12px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 6px', borderRadius: '9999px', background: CATEGORY_COLORS[entity.category] + '20', color: CATEGORY_COLORS[entity.category], fontWeight: '500', fontSize: '11px' }}>
-                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: CATEGORY_COLORS[entity.category] }} />
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">
+                  {entity.versionToUpdate ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-red-600 dark:text-red-400">{entity.versionToUpdate}</span>
+                      {entity.versionUpdateDeadline && (
+                        <span className="text-[10px] text-gray-500 dark:text-gray-500">до {entity.versionUpdateDeadline}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-600">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-xs">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-medium text-xs" style={{ background: CATEGORY_COLORS[entity.category] + '20', color: CATEGORY_COLORS[entity.category] }}>
+                    <span className="w-1 h-1 rounded-full" style={{ background: CATEGORY_COLORS[entity.category] }} />
                     {entity.category}
                   </span>
                 </td>
-                <td style={{ padding: '10px 12px', fontSize: '12px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 6px', borderRadius: '9999px', background: RISK_COLORS[entity.riskLevel] + '20', color: RISK_COLORS[entity.riskLevel], fontWeight: '500', fontSize: '11px' }}>
-                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: RISK_COLORS[entity.riskLevel] }} />
+                <td className="px-3 py-2.5 text-xs">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-medium text-xs" style={{ background: RISK_COLORS[entity.riskLevel] + '20', color: RISK_COLORS[entity.riskLevel] }}>
+                    <span className="w-1 h-1 rounded-full" style={{ background: RISK_COLORS[entity.riskLevel] }} />
                     {entity.riskLevel}
                   </span>
                 </td>
-                <td style={{ padding: '10px 12px', fontSize: '12px', color: '#6b7280' }}>{entity.type}</td>
-                <td style={{ padding: '10px 12px', fontSize: '12px', color: '#6b7280' }}>{entity.subtype || '—'}</td>
-                <td style={{ padding: '10px 12px', fontSize: '12px', color: '#6b7280' }}>{entity.license}</td>
-                <td style={{ padding: '10px 12px', fontSize: '12px', color: '#6b7280' }}>{entity.owner}</td>
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.type}</td>
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.subtype || '—'}</td>
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.license}</td>
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.owner}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#6b7280' }}>Показывать:</span>
-          <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }}>
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600 dark:text-gray-400">Показывать:</span>
+          <select 
+            value={pageSize} 
+            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} 
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
             <option value={10}>10</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
             <option value={9999}>Все</option>
           </select>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <button onClick={() => goToPage(1)} disabled={page === 1} style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1 }}>Первая</button>
-          <button onClick={() => goToPage(page - 1)} disabled={page === 1} style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1 }}>←</button>
-          <span style={{ fontSize: '12px', padding: '0 8px' }}>Стр. {page} из {totalPages || 1}</span>
-          <button onClick={() => goToPage(page + 1)} disabled={page === totalPages} style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1 }}>→</button>
-          <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1 }}>Последняя</button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => goToPage(1)} 
+            disabled={page === 1} 
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            Первая
+          </button>
+          <button 
+            onClick={() => goToPage(page - 1)} 
+            disabled={page === 1} 
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            ←
+          </button>
+          <span className="text-xs px-2 text-gray-600 dark:text-gray-400">Стр. {page} из {totalPages || 1}</span>
+          <button 
+            onClick={() => goToPage(page + 1)} 
+            disabled={page === totalPages} 
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            →
+          </button>
+          <button 
+            onClick={() => goToPage(totalPages)} 
+            disabled={page === totalPages} 
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            Последняя
+          </button>
         </div>
       </div>
     </div>

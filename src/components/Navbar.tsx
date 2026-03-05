@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { VersionModal } from './VersionModal';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 export const Navbar: React.FC = () => {
   const auth = useAuth();
@@ -15,46 +16,27 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav style={{
-      background: 'white',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      padding: '16px'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link to="/" style={{ fontSize: '20px', fontWeight: 'bold', color: '#2563eb', textDecoration: 'none' }}>Tech Radar</Link>
+    <nav className="bg-white dark:bg-[#16213e] shadow-md border-b border-gray-200 dark:border-[#0f3460] transition-colors duration-200">
+      <div className="max-w-[1400px] mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-6">
+          <Link to="/" className="text-xl font-bold text-blue-600 dark:text-blue-400 no-underline hover:underline">Tech Radar</Link>
           {auth.isAdmin && (
-            <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="flex gap-4">
               <Link
                 to="/users"
-                style={{
-                  fontSize: '14px',
-                  color: isActive('/users') ? '#2563eb' : '#666',
-                  textDecoration: 'none',
-                  fontWeight: isActive('/users') ? 600 : 400,
-                }}
+                className={`text-sm ${isActive('/users') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
               >
                 Пользователи
               </Link>
               <Link
                 to="/audit"
-                style={{
-                  fontSize: '14px',
-                  color: isActive('/audit') ? '#2563eb' : '#666',
-                  textDecoration: 'none',
-                  fontWeight: isActive('/audit') ? 600 : 400,
-                }}
+                className={`text-sm ${isActive('/audit') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
               >
                 Аудит
               </Link>
               <Link
                 to="/import"
-                style={{
-                  fontSize: '14px',
-                  color: isActive('/import') ? '#2563eb' : '#666',
-                  textDecoration: 'none',
-                  fontWeight: isActive('/import') ? 600 : 400,
-                }}
+                className={`text-sm ${isActive('/import') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
               >
                 Импорт/Экспорт
               </Link>
@@ -63,79 +45,40 @@ export const Navbar: React.FC = () => {
           {auth.user?.role === 'manager' && (
             <Link
               to="/import"
-              style={{
-                fontSize: '14px',
-                color: isActive('/import') ? '#2563eb' : '#666',
-                textDecoration: 'none',
-                fontWeight: isActive('/import') ? 600 : 400,
-              }}
+              className={`text-sm ${isActive('/import') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
             >
               Импорт/Экспорт
             </Link>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3">
           {auth.isAdmin && (
-            <span style={{
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontWeight: 500,
-              borderRadius: '4px',
-              background: '#dbeafe',
-              color: '#1e40af',
-            }}>
+            <span className="px-2.5 py-1 text-xs font-medium rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
               Администратор
             </span>
           )}
           {auth.user?.role === 'manager' && (
-            <span style={{
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontWeight: 500,
-              borderRadius: '4px',
-              background: '#dbeafe',
-              color: '#1e40af',
-            }}>
+            <span className="px-2.5 py-1 text-xs font-medium rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
               Менеджер
             </span>
           )}
-          <span style={{ color: '#666', fontSize: '14px' }}>
+          <span className="text-gray-600 dark:text-gray-300 text-sm">
             {auth.user?.firstName} {auth.user?.lastName}
           </span>
+          <ThemeToggle size="md" />
           <button
             onClick={() => {
               console.log('Version button clicked!');
               setShowVersionModal(true);
             }}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              color: '#fff',
-              background: '#2563eb',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            }}
+            className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center cursor-pointer border-none shadow-md transition-colors"
             title="О системе (версии)"
           >
             ?
           </button>
           <button
             onClick={() => auth.logout()}
-            style={{
-              padding: '8px 16px',
-              fontSize: '14px',
-              color: '#666',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer'
-            }}
+            className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 border-none cursor-pointer transition-colors rounded"
           >
             Выйти
           </button>

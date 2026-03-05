@@ -54,6 +54,8 @@ export interface TechRadarEntity {
   costFactor?: CostFactor;
   vendorLockIn: boolean;
   businessCriticality: RiskLevel;
+  versionToUpdate?: string;
+  versionUpdateDeadline?: string;
 }
 
 export interface User {

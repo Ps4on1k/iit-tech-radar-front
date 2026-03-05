@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import type { User, UserRole } from '../types';
 import { Navigate } from 'react-router-dom';
+import { useNotification } from '../hooks/useNotification';
+import { Modal, Button, Input, Select } from '../ui';
 
 interface FormData {
   email: string;
@@ -22,6 +24,7 @@ const initialFormData: FormData = {
 
 export const UsersPage: React.FC = () => {
   const { isAdmin, isAuthenticated } = useAuth();
+  const notification = useNotification();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +32,12 @@ export const UsersPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const roleOptions = [
+    { value: 'admin', label: 'Администратор' },
+    { value: 'manager', label: 'Менеджер' },
+    { value: 'user', label: 'Пользователь' },
+  ];
 
   useEffect(() => {
     if (isAuthenticated && !isAdmin) {
@@ -81,7 +89,6 @@ export const UsersPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    setSuccessMessage(null);
 
     try {
       if (editingUser) {
@@ -91,7 +98,7 @@ export const UsersPage: React.FC = () => {
           lastName: formData.lastName,
           role: formData.role,
         });
-        setSuccessMessage('Пользователь обновлен');
+        notification.success('Пользователь обновлен', { title: formData.email });
       } else {
         if (!formData.password) {
           setFormError('Пароль обязателен для нового пользователя');
@@ -104,7 +111,7 @@ export const UsersPage: React.FC = () => {
           lastName: formData.lastName,
           role: formData.role,
         });
-        setSuccessMessage('Пользователь создан');
+        notification.success('Пользователь создан', { title: formData.email });
       }
       await loadUsers();
       handleCloseModal();
@@ -124,10 +131,10 @@ export const UsersPage: React.FC = () => {
 
     try {
       await authApi.setUserPassword(user.id, newPassword);
-      alert('Пароль успешно изменен');
+      notification.success('Пароль успешно изменен', { title: user.email });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Ошибка смены пароля');
+      notification.error(error.response?.data?.error || 'Ошибка смены пароля', { title: 'Ошибка' });
     }
   };
 
@@ -138,10 +145,11 @@ export const UsersPage: React.FC = () => {
 
     try {
       await authApi.toggleUserStatus(user.id);
+      notification.success(`Пользователь ${user.isActive ? 'заблокирован' : 'разблокирован'}`, { title: user.email });
       await loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Ошибка изменения статуса');
+      notification.error(error.response?.data?.error || 'Ошибка изменения статуса', { title: 'Ошибка' });
     }
   };
 
@@ -152,10 +160,11 @@ export const UsersPage: React.FC = () => {
 
     try {
       await authApi.deleteUser(user.id);
+      notification.success('Пользователь удален', { title: `${user.firstName} ${user.lastName}` });
       await loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Ошибка удаления');
+      notification.error(error.response?.data?.error || 'Ошибка удаления', { title: 'Ошибка' });
     }
   };
 
@@ -165,248 +174,187 @@ export const UsersPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <div style={{ maxWidth: '1400px', margin: '24px auto', padding: '0 24px' }}>
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Управление пользователями</h1>
-        <p className="text-gray-600 mb-4">Создание, редактирование и удаление пользователей</p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-          <button
-            onClick={handleOpenCreate}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: 'white',
-              background: '#2563eb',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-            }}
-          >
-            + Создать пользователя
-          </button>
+    <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
+        {/* Заголовок страницы */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Управление пользователями</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Создание, редактирование и удаление пользователей</p>
         </div>
-        {successMessage && (
-          <div style={{ padding: '12px 16px', background: '#d1fae5', color: '#065f46', borderRadius: '6px', marginBottom: '16px' }}>
-            {successMessage}
+
+        {/* Actions */}
+        <div className="mb-6 flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Всего пользователей: {users.length}
           </div>
-        )}
+          <Button onClick={handleOpenCreate} variant="primary">
+            + Добавить пользователя
+          </Button>
+        </div>
 
         {error && (
-          <div style={{ padding: '12px 16px', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '16px' }}>
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
             {error}
           </div>
         )}
 
         {/* Users Table */}
-        <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>ФИО</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Роль</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Статус</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1a1a1a' }}>{user.email}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1a1a1a' }}>{user.firstName} {user.lastName}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      borderRadius: '4px',
-                      background: user.role === 'admin' ? '#dbeafe' : user.role === 'manager' ? '#fef3c7' : '#f3f4f6',
-                      color: user.role === 'admin' ? '#1e40af' : user.role === 'manager' ? '#92400e' : '#374151',
-                    }}>
-                      {user.role === 'admin' ? 'Администратор' : user.role === 'manager' ? 'Менеджер' : 'Пользователь'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      borderRadius: '4px',
-                      background: user.isActive ? '#d1fae5' : '#fee2e2',
-                      color: user.isActive ? '#065f46' : '#991b1b',
-                    }}>
-                      {user.isActive ? 'Активен' : 'Заблокирован'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                      <button
-                        onClick={() => handleOpenEdit(user)}
-                        style={{ padding: '6px 12px', fontSize: '13px', color: '#2563eb', background: '#eff6ff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        onClick={() => handleSetPassword(user)}
-                        style={{ padding: '6px 12px', fontSize: '13px', color: '#7c3aed', background: '#f5f3ff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Сброс пароля
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatus(user)}
-                        style={{ padding: '6px 12px', fontSize: '13px', color: user.isActive ? '#dc2626' : '#059669', background: user.isActive ? '#fef2f2' : '#ecfdf5', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        {user.isActive ? 'Заблокировать' : 'Разблокировать'}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user)}
-                        style={{ padding: '6px 12px', fontSize: '13px', color: '#dc2626', background: '#fef2f2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  </td>
+        <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md overflow-hidden transition-colors duration-200">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">ФИО</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Роль</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Статус</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Действия</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{user.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{user.firstName} {user.lastName}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        user.role === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
+                        user.role === 'manager' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200' :
+                        'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                      }`}>
+                        {user.role === 'admin' ? 'Администратор' : user.role === 'manager' ? 'Менеджер' : 'Пользователь'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        user.isActive ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                      }`}>
+                        {user.isActive ? 'Активен' : 'Заблокирован'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenEdit(user)}
+                          className="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          onClick={() => handleSetPassword(user)}
+                          className="px-3 py-1.5 text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded transition-colors"
+                        >
+                          Сброс пароля
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(user)}
+                          className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                            user.isActive 
+                              ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
+                              : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30'
+                          }`}
+                        >
+                          {user.isActive ? 'Заблокировать' : 'Разблокировать'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user)}
+                          className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }} onClick={handleCloseModal}>
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '480px',
-              maxHeight: '90vh',
-              overflow: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', margin: 0 }}>
-                {editingUser ? 'Редактирование пользователя' : 'Создание пользователя'}
-              </h2>
-              <button
-                onClick={handleCloseModal}
-                style={{ background: 'none', border: 'none', fontSize: '24px', color: '#666', cursor: 'pointer', padding: '0', lineHeight: 1 }}
-              >
-                ×
-              </button>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingUser ? 'Редактирование пользователя' : 'Создание пользователя'}
+        size="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
+              {formError}
             </div>
+          )}
 
-            {formError && (
-              <div style={{ padding: '10px 14px', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                {formError}
-              </div>
-            )}
+          <Input
+            label="Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="user@example.com"
+            required
+          />
 
-            <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
+          {!editingUser && (
+            <Input
+              label="Пароль"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="••••••••"
+              required
+            />
+          )}
 
-              {!editingUser && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Пароль</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
-                    required={!editingUser}
-                  />
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Имя</label>
-                  <input
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Фамилия</label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Роль</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' | 'manager' })}
-                  style={{ width: '100%', padding: '10px 12px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '6px', boxSizing: 'border-box' }}
-                >
-                  <option value="user">Пользователь</option>
-                  <option value="manager">Менеджер</option>
-                  <option value="admin">Администратор</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  style={{ padding: '10px 20px', fontSize: '14px', color: '#374151', background: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: '10px 20px', fontSize: '14px', color: 'white', background: '#2563eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                >
-                  {editingUser ? 'Сохранить' : 'Создать'}
-                </button>
-              </div>
-            </form>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Имя"
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              placeholder="Иван"
+              required
+            />
+            <Input
+              label="Фамилия"
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              placeholder="Иванов"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <Select
+            label="Роль"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+            options={roleOptions}
+            required
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={handleCloseModal}>
+              Отмена
+            </Button>
+            <Button type="submit" variant="primary">
+              {editingUser ? 'Сохранить' : 'Создать'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

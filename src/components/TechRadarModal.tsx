@@ -42,6 +42,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text', 
       {editing ? (
         <div style={{ display: 'flex', gap: '8px', flex: 1, flexDirection: 'column' }}>
           <input
+            className="input-field"
             type={type}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
@@ -49,8 +50,8 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text', 
           />
           {error && <p style={{ margin: 0, fontSize: '11px', color: '#ef4444' }}>{error}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleSave} style={{ padding: '4px 8px', fontSize: '12px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
-            <button onClick={handleCancel} style={{ padding: '4px 8px', fontSize: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
+            <button className="btn-save" onClick={handleSave} style={{ padding: '4px 8px', fontSize: '12px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
+            <button className="btn-cancel" onClick={handleCancel} style={{ padding: '4px 8px', fontSize: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
           </div>
         </div>
       ) : (
@@ -65,6 +66,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, onEdit, type = 'text', 
             </span>
             {onEdit && (
               <button
+                className="btn-edit"
                 onClick={() => setEditing(true)}
                 style={{ padding: '2px 6px', fontSize: '11px', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
               >
@@ -109,11 +111,11 @@ const EditableTags: React.FC<EditableTagsProps> = ({ label, values, onEdit }) =>
         {onEdit && (
           editing ? (
             <div style={{ display: 'flex', gap: '4px' }}>
-              <button onClick={handleSave} style={{ padding: '2px 6px', fontSize: '11px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
-              <button onClick={handleCancel} style={{ padding: '2px 6px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
+              <button className="btn-save" onClick={handleSave} style={{ padding: '2px 6px', fontSize: '11px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✓</button>
+              <button className="btn-cancel" onClick={handleCancel} style={{ padding: '2px 6px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
             </div>
           ) : (
-            <button onClick={() => setEditing(true)} style={{ padding: '2px 6px', fontSize: '11px', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✎ Добавить</button>
+            <button className="btn-edit" onClick={() => setEditing(true)} style={{ padding: '2px 6px', fontSize: '11px', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✎ Добавить</button>
           )
         )}
       </div>
@@ -146,9 +148,10 @@ interface SelectRowProps {
 }
 
 const SelectRow: React.FC<SelectRowProps> = ({ label, value, options, onChange, disabled }) => (
-  <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
-    <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>{label}</span>
+  <div className="select-row" style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+    <span className="label-text" style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>{label}</span>
     <select
+      className="select-field"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
@@ -162,8 +165,8 @@ const SelectRow: React.FC<SelectRowProps> = ({ label, value, options, onChange, 
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div style={{ marginBottom: '20px' }}>
-    <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 12px 0', paddingBottom: '8px', borderBottom: '2px solid #3b82f6' }}>{title}</h3>
+  <div className="section-container" style={{ marginBottom: '20px' }}>
+    <h3 className="section-title" style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 12px 0', paddingBottom: '8px', borderBottom: '2px solid #3b82f6' }}>{title}</h3>
     {children}
   </div>
 );
@@ -230,8 +233,15 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       setSaving(true);
       setError(null);
 
+      // Очищаем пустые значения перед валидацией
+      const entityToValidate = {
+        ...localEntity,
+        adoptionRate: localEntity.adoptionRate === null || localEntity.adoptionRate === undefined || localEntity.adoptionRate === '' ? undefined : localEntity.adoptionRate,
+        popularityIndex: localEntity.popularityIndex === null || localEntity.popularityIndex === undefined || localEntity.popularityIndex === '' ? undefined : localEntity.popularityIndex,
+      };
+
       // Полная валидация сущности
-      const validationResult = validateTechRadarEntity(localEntity, false);
+      const validationResult = validateTechRadarEntity(entityToValidate, false);
 
       if (!validationResult.valid) {
         setFieldErrors(validationResult.errors.reduce((acc, err) => {
@@ -245,7 +255,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       }
 
       // ID генерируется на бэкенде автоматически (UUID), удаляем его из payload
-      const { id, ...entityToSave } = localEntity;
+      const { id, ...entityToSave } = entityToValidate;
 
       await techRadarApi.create(entityToSave as TechRadarEntity);
       onUpdate?.();
@@ -265,9 +275,16 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       setSaving(true);
       setError(null);
 
+      // Очищаем пустые значения перед валидацией
+      const entityToValidate = {
+        ...localEntity,
+        adoptionRate: localEntity.adoptionRate === null || localEntity.adoptionRate === undefined || localEntity.adoptionRate === '' ? undefined : localEntity.adoptionRate,
+        popularityIndex: localEntity.popularityIndex === null || localEntity.popularityIndex === undefined || localEntity.popularityIndex === '' ? undefined : localEntity.popularityIndex,
+      };
+
       // Полная валидация сущности (isUpdate=true)
-      const validationResult = validateTechRadarEntity(localEntity, true);
-      
+      const validationResult = validateTechRadarEntity(entityToValidate, true);
+
       if (!validationResult.valid) {
         setFieldErrors(validationResult.errors.reduce((acc, err) => {
           if (err.field) {
@@ -280,7 +297,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       }
 
       // Отправляем все изменения на сервер
-      const updatePayload: Partial<TechRadarEntity> = { ...localEntity };
+      const updatePayload: Partial<TechRadarEntity> = { ...entityToValidate };
       delete (updatePayload as any).createdAt;
       delete (updatePayload as any).updatedAt;
 
@@ -357,6 +374,8 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       costFactor: 'Стоимость',
       vendorLockIn: 'Привязка к вендору',
       businessCriticality: 'Критичность для бизнеса',
+      versionToUpdate: 'Обновить до версии',
+      versionUpdateDeadline: 'Дедлайн обновления',
     };
     return labels[field] || field;
   };
@@ -443,6 +462,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
 
   return (
     <div
+      className="modal-overlay"
       style={{
         position: 'fixed',
         inset: 0,
@@ -456,6 +476,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       onClick={onClose}
     >
       <div
+        className="modal-content"
         style={{
           background: 'white',
           borderRadius: '12px',
@@ -467,15 +488,18 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)',
-          gap: '16px'
-        }}>
+        <div
+          className="modal-header"
+          style={{
+            padding: '20px',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)',
+            gap: '16px'
+          }}
+        >
           <div style={{ flex: 1, minWidth: 0 }}>
             {isAdminOrManager || isCreateMode ? (
               <div>
@@ -537,6 +561,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             {isAdminOrManager && !isCreateMode && (
               <button
+                className="btn-delete"
                 onClick={handleDelete}
                 disabled={saving}
                 style={{
@@ -555,6 +580,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
             )}
             {(isAdminOrManager || isCreateMode) && (
               <button
+                className="btn-save"
                 onClick={isCreateMode ? handleSaveCreate : handleSaveEdit}
                 disabled={saving || !localEntity.name || !localEntity.version}
                 style={{
@@ -572,6 +598,7 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
               </button>
             )}
             <button
+              className="btn-close"
               onClick={onClose}
               style={{
                 background: '#f3f4f6',
@@ -763,12 +790,33 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                     style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: '4px' }}
                   />
                 </div>
+                <div style={{ display: 'flex', borderBottom: fieldErrors.versionToUpdate ? '1px solid #ef4444' : '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+                  <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Обновить до версии</span>
+                  <input
+                    value={localEntity.versionToUpdate || ''}
+                    onChange={(e) => updateField('versionToUpdate', e.target.value)}
+                    placeholder="Например: 2.0.0"
+                    style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: fieldErrors.versionToUpdate ? '1px solid #ef4444' : '1px solid #3b82f6', borderRadius: '4px' }}
+                  />
+                </div>
+                {fieldErrors.versionToUpdate && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#ef4444' }}>{fieldErrors.versionToUpdate}</p>}
+                <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
+                  <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Дедлайн обновления</span>
+                  <input
+                    type="date"
+                    value={localEntity.versionUpdateDeadline?.split('T')[0] || ''}
+                    onChange={(e) => updateField('versionUpdateDeadline', e.target.value)}
+                    style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: '4px' }}
+                  />
+                </div>
               </>
             ) : (
               <>
                 {localEntity.lastUpdated && <InfoRow label="Последнее обновление" value={localEntity.lastUpdated} />}
                 {localEntity.versionReleaseDate && <InfoRow label="Дата выпуска версии" value={localEntity.versionReleaseDate} />}
                 {localEntity.endOfLifeDate && <InfoRow label="Дата окончания поддержки" value={localEntity.endOfLifeDate} />}
+                {localEntity.versionToUpdate && <InfoRow label="Обновить до версии" value={localEntity.versionToUpdate} />}
+                {localEntity.versionUpdateDeadline && <InfoRow label="Дедлайн обновления" value={localEntity.versionUpdateDeadline} />}
               </>
             )}
           </Section>
@@ -869,22 +917,48 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Внедрение (%)</span>
                   <input
+                    className="input-field"
                     type="number"
                     min="0"
                     max="100"
-                    value={localEntity.adoptionRate !== undefined ? Math.round(localEntity.adoptionRate * 100) : ''}
-                    onChange={(e) => updateField('adoptionRate', e.target.value ? parseInt(e.target.value) / 100 : undefined)}
+                    value={localEntity.adoptionRate !== undefined && localEntity.adoptionRate !== null ? Math.round(localEntity.adoptionRate * 100) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === null || value === undefined) {
+                        updateField('adoptionRate', null);
+                      } else {
+                        const percentValue = parseFloat(value);
+                        if (!isNaN(percentValue)) {
+                          // Конвертируем проценты в долю (0-1) и ограничиваем диапазоном
+                          const normalizedValue = Math.max(0, Math.min(100, percentValue)) / 100;
+                          updateField('adoptionRate', Number(normalizedValue.toFixed(2)));
+                        }
+                      }
+                    }}
                     style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: '4px', width: '100px' }}
                   />
                 </div>
                 <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', padding: '8px 0', alignItems: 'center' }}>
                   <span style={{ width: '140px', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Популярность (%)</span>
                   <input
+                    className="input-field"
                     type="number"
                     min="0"
                     max="100"
-                    value={localEntity.popularityIndex !== undefined ? Math.round(localEntity.popularityIndex * 100) : ''}
-                    onChange={(e) => updateField('popularityIndex', e.target.value ? parseInt(e.target.value) / 100 : undefined)}
+                    value={localEntity.popularityIndex !== undefined && localEntity.popularityIndex !== null ? Math.round(localEntity.popularityIndex * 100) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === null || value === undefined) {
+                        updateField('popularityIndex', null);
+                      } else {
+                        const percentValue = parseFloat(value);
+                        if (!isNaN(percentValue)) {
+                          // Конвертируем проценты в долю (0-1) и ограничиваем диапазоном
+                          const normalizedValue = Math.max(0, Math.min(100, percentValue)) / 100;
+                          updateField('popularityIndex', Number(normalizedValue.toFixed(2)));
+                        }
+                      }
+                    }}
                     style={{ flex: 1, fontSize: '13px', padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: '4px', width: '100px' }}
                   />
                 </div>

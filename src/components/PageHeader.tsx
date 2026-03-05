@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 interface PageHeaderProps {
   title: string;
@@ -14,79 +15,52 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav style={{
-      background: 'white',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      padding: '16px 24px'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <Link to="/" style={{ fontSize: '20px', fontWeight: 'bold', color: '#2563eb', textDecoration: 'none' }}>Tech Radar</Link>
+    <nav className="bg-white dark:bg-[#16213e] shadow-md border-b border-gray-200 dark:border-[#0f3460] transition-colors duration-200">
+      <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="text-xl font-bold text-blue-600 dark:text-blue-400 no-underline hover:underline">Tech Radar</Link>
             {auth.isAdmin && (
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div className="flex gap-4">
                 <Link
                   to="/users"
-                  style={{
-                    fontSize: '14px',
-                    color: isActive('/users') ? '#2563eb' : '#666',
-                    textDecoration: 'none',
-                    fontWeight: isActive('/users') ? 600 : 400,
-                  }}
+                  className={`text-sm ${isActive('/users') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
                 >
                   Пользователи
                 </Link>
                 <Link
                   to="/import"
-                  style={{
-                    fontSize: '14px',
-                    color: isActive('/import') ? '#2563eb' : '#666',
-                    textDecoration: 'none',
-                    fontWeight: isActive('/import') ? 600 : 400,
-                  }}
+                  className={`text-sm ${isActive('/import') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
                 >
                   Импорт/Экспорт
                 </Link>
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="flex items-center gap-3">
             {auth.isAdmin && (
-              <span style={{
-                padding: '4px 10px',
-                fontSize: '12px',
-                fontWeight: 500,
-                borderRadius: '4px',
-                background: '#dbeafe',
-                color: '#1e40af',
-              }}>
+              <span className="px-2.5 py-1 text-xs font-medium rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                 Администратор
               </span>
             )}
-            <span style={{ color: '#666', fontSize: '14px' }}>
+            <span className="text-gray-600 dark:text-gray-300 text-sm">
               {auth.user?.firstName} {auth.user?.lastName}
             </span>
+            <ThemeToggle size="md" />
             <button
               onClick={() => auth.logout()}
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#666',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 border-none cursor-pointer transition-colors rounded"
             >
               Выйти
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="flex flex-col gap-1">
           {title && (
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1a1a1a', margin: 0 }}>{title}</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 m-0">{title}</h1>
           )}
           {subtitle && (
-            <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>{subtitle}</p>
+            <p className="text-gray-600 dark:text-gray-400 m-0 text-sm">{subtitle}</p>
           )}
         </div>
       </div>

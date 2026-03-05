@@ -58,11 +58,11 @@ export const HomePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
         <div className="flex items-center justify-center h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Загрузка...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
           </div>
         </div>
       </div>
@@ -71,9 +71,9 @@ export const HomePage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
         <div className="flex items-center justify-center h-[calc(100vh-140px)]">
-          <div className="text-center text-red-600">
+          <div className="text-center text-red-600 dark:text-red-400">
             <p className="text-xl">{error}</p>
             <button
               onClick={() => fetchData()}
@@ -102,11 +102,11 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
       <main className="max-w-[100%] mx-auto px-4 py-8">
         {/* Заголовок страницы */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Обзор технологического стэка</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Обзор технологического стэка</h1>
           {isAdminOrManager && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -116,7 +116,7 @@ export const HomePage: React.FC = () => {
             </button>
           )}
         </div>
-        
+
         {/* Радар */}
         <div className="mb-8">
           <TechRadarChart
@@ -130,31 +130,31 @@ export const HomePage: React.FC = () => {
 
         {/* Статистика */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded shadow p-4">
-            <p className="text-xs text-gray-500">Всего</p>
-            <p className="text-xl font-bold">{filteredData.length}</p>
+          <div className="bg-white dark:bg-[#16213e] rounded shadow p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Всего</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{filteredData.length}</p>
           </div>
-          <div className="bg-green-50 rounded shadow p-4">
-            <p className="text-xs text-green-600">Adopt</p>
-            <p className="text-xl font-bold text-green-900">{stats.adopt}</p>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded shadow p-4">
+            <p className="text-xs text-green-600 dark:text-green-400">Adopt</p>
+            <p className="text-xl font-bold text-green-900 dark:text-green-200">{stats.adopt}</p>
           </div>
-          <div className="bg-blue-50 rounded shadow p-4">
-            <p className="text-xs text-blue-600">Trial</p>
-            <p className="text-xl font-bold text-blue-900">{stats.trial}</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded shadow p-4">
+            <p className="text-xs text-blue-600 dark:text-blue-400">Trial</p>
+            <p className="text-xl font-bold text-blue-900 dark:text-blue-200">{stats.trial}</p>
           </div>
-          <div className="bg-yellow-50 rounded shadow p-4">
-            <p className="text-xs text-yellow-600">Assess</p>
-            <p className="text-xl font-bold text-yellow-900">{stats.assess}</p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded shadow p-4">
+            <p className="text-xs text-yellow-600 dark:text-yellow-400">Assess</p>
+            <p className="text-xl font-bold text-yellow-900 dark:text-yellow-200">{stats.assess}</p>
           </div>
-          <div className="bg-orange-50 rounded shadow p-4">
-            <p className="text-xs text-orange-600">Hold/Drop</p>
-            <p className="text-xl font-bold text-orange-900">{stats.holdDrop}</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded shadow p-4">
+            <p className="text-xs text-orange-600 dark:text-orange-400">Hold/Drop</p>
+            <p className="text-xl font-bold text-orange-900 dark:text-orange-200">{stats.holdDrop}</p>
           </div>
         </div>
 
         {/* Таблица */}
         <div>
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
             Технологии {(radarCategory || radarType) ? `(отфильтровано: ${filteredData.length})` : ''}
           </h2>
           <TechRadarTable
@@ -170,7 +170,7 @@ export const HomePage: React.FC = () => {
       {selectedEntity && (
         <TechRadarModal entity={selectedEntity} onClose={() => setSelectedEntity(null)} onUpdate={fetchData} />
       )}
-      
+
       {isCreateModalOpen && (
         <TechRadarModal entity={null} onClose={() => setIsCreateModalOpen(false)} onUpdate={fetchData} />
       )}

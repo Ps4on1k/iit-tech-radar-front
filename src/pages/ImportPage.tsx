@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { importApi } from '../services/api';
 import type { TechRadarEntity } from '../types';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { Button } from '../ui';
+import { useNotification } from '../hooks/useNotification';
 
 interface ValidationResult {
   valid: boolean;
@@ -22,6 +24,7 @@ interface ImportResult {
 
 export const ImportPage: React.FC = () => {
   const { isAdminOrManager, isAuthenticated } = useAuth();
+  const notification = useNotification();
   const navigate = useNavigate();
   const [jsonFile, setJsonFile] = useState<File | null>(null);
   const [jsonContent, setJsonContent] = useState<string>('');
@@ -116,17 +119,17 @@ export const ImportPage: React.FC = () => {
         updateExisting: importMode === 'update' || importMode === 'overwrite',
       });
 
-      // Backend возвращает { message, result } при успехе
-      // result содержит { success, imported, skipped, updated, errors }
-      if (result.result?.success || result.message) {
-        setImportResult(result.result || result);
+      setImportResult(result);
+
+      if (result.success) {
+        notification.success(`Импортировано ${result.imported} записей`, { title: 'Импорт завершен' });
         setShouldRedirect(true);
       } else {
-        setImportResult(result.result || result);
         setError('Импорт завершен с ошибками');
       }
-    } catch {
-      setError('Ошибка импорта');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Ошибка импорта');
     } finally {
       setLoading(false);
     }
@@ -138,8 +141,8 @@ export const ImportPage: React.FC = () => {
       setError(null);
 
       const data = await importApi.exportTechRadar();
-      const json = JSON.stringify(data, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -167,7 +170,6 @@ export const ImportPage: React.FC = () => {
     }
   };
 
-  // Эффект для редиректа после успешного импорта
   React.useEffect(() => {
     if (shouldRedirect) {
       navigate('/');
@@ -179,292 +181,189 @@ export const ImportPage: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <div style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 24px' }}>
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Импорт/Экспорт техрадара</h1>
-        <p className="text-gray-600 mb-4">Загрузка данных из JSON файла или выгрузка текущих данных</p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-          <button
-            onClick={handleExport}
-            disabled={loading}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: 'white',
-              background: loading ? '#9ca3af' : '#059669',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {loading ? 'Экспорт...' : 'Экспортировать JSON'}
-          </button>
-        </div>
-        {/* Upload Section */}
-        <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>Загрузка JSON файла</h2>
-
-          <div
-            style={{
-              border: '2px dashed #d1d5db',
-              borderRadius: '8px',
-              padding: '32px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: '#f9fafb',
-            }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <svg style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p style={{ color: '#374151', fontSize: '14px', marginBottom: '8px' }}>
-              {jsonFile ? jsonFile.name : 'Перетащите файл сюда или кликните для выбора'}
-            </p>
-            <p style={{ color: '#9ca3af', fontSize: '13px' }}>Только JSON файлы</p>
-          </div>
-
-          {jsonContent && (
-            <div style={{ marginTop: '20px' }}>
-              {/* Switch для режима импорта */}
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '12px' }}>Режим импорта:</p>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {/* Skip existing */}
-                  <button
-                    onClick={() => setImportMode('skip')}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      borderRadius: '8px',
-                      border: '2px solid',
-                      borderColor: importMode === 'skip' ? '#7c3aed' : '#e5e7eb',
-                      background: importMode === 'skip' ? '#f5f3ff' : 'white',
-                      color: importMode === 'skip' ? '#7c3aed' : '#6b7280',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: `2px solid ${importMode === 'skip' ? '#7c3aed' : '#d1d5db'}`,
-                        background: importMode === 'skip' ? '#7c3aed' : 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {importMode === 'skip' && (
-                          <svg style={{ width: '12px', height: '12px', color: 'white' }} fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'left' }}>
-                        <div>Пропускать</div>
-                        <div style={{ fontSize: '11px', fontWeight: 400, opacity: 0.8 }}>Не изменять существующие</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  {/* Update existing */}
-                  <button
-                    onClick={() => setImportMode('update')}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      borderRadius: '8px',
-                      border: '2px solid',
-                      borderColor: importMode === 'update' ? '#7c3aed' : '#e5e7eb',
-                      background: importMode === 'update' ? '#f5f3ff' : 'white',
-                      color: importMode === 'update' ? '#7c3aed' : '#6b7280',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: `2px solid ${importMode === 'update' ? '#7c3aed' : '#d1d5db'}`,
-                        background: importMode === 'update' ? '#7c3aed' : 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {importMode === 'update' && (
-                          <svg style={{ width: '12px', height: '12px', color: 'white' }} fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'left' }}>
-                        <div>Обновлять</div>
-                        <div style={{ fontSize: '11px', fontWeight: 400, opacity: 0.8 }}>Изменять существующие</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  {/* Overwrite */}
-                  <button
-                    onClick={() => setImportMode('overwrite')}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      borderRadius: '8px',
-                      border: '2px solid',
-                      borderColor: importMode === 'overwrite' ? '#dc2626' : '#e5e7eb',
-                      background: importMode === 'overwrite' ? '#fef2f2' : 'white',
-                      color: importMode === 'overwrite' ? '#dc2626' : '#6b7280',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: `2px solid ${importMode === 'overwrite' ? '#dc2626' : '#d1d5db'}`,
-                        background: importMode === 'overwrite' ? '#dc2626' : 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {importMode === 'overwrite' && (
-                          <svg style={{ width: '12px', height: '12px', color: 'white' }} fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ color: '#dc2626' }}>Заменить всё</div>
-                        <div style={{ fontSize: '11px', fontWeight: 400, opacity: 0.8 }}>Полная замена данных</div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                  {importMode === 'skip' && 'ⓘ Существующие записи будут пропущены, новые — добавлены'}
-                  {importMode === 'update' && 'ⓘ Существующие записи будут обновлены, новые — добавлены'}
-                  {importMode === 'overwrite' && '⚠ Все существующие записи будут заменены данными из файла'}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={handleValidate}
-                  disabled={validating || loading}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: 'white',
-                    background: validating ? '#9ca3af' : '#7c3aed',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: validating ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {validating ? 'Валидация...' : 'Проверить данные'}
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={loading || validating}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: 'white',
-                    background: loading ? '#9ca3af' : '#2563eb',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {loading ? 'Импорт...' : 'Импортировать'}
-                </button>
-                <button
-                  onClick={handleClear}
-                  disabled={loading || validating}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: '#374151',
-                    background: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Очистить
-                </button>
-              </div>
-            </div>
-          )}
+    <div className="min-h-screen bg-gray-100 dark:bg-[#1a1a2e] transition-colors duration-200">
+      <div className="max-w-[1200px] mx-auto px-4 py-8">
+        {/* Заголовок страницы */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Импорт/Экспорт техрадара</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Загрузка данных из JSON файла или выгрузка текущих данных</p>
         </div>
 
-        {/* Error */}
+        {/* Export Button */}
+        <div className="flex justify-end mb-6">
+          <Button onClick={handleExport} disabled={loading} variant="success">
+            📥 Экспортировать в JSON
+          </Button>
+        </div>
+
+        {/* Error Message */}
         {error && (
-          <div style={{ padding: '12px 16px', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '24px' }}>
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
             {error}
           </div>
         )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* File Upload */}
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-6 transition-colors duration-200">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Загрузка файла</h2>
+            
+            <div className="mb-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400
+                         file:mr-4 file:py-2 file:px-4
+                         file:rounded-lg file:border-0
+                         file:text-sm file:font-semibold
+                         file:bg-blue-50 file:text-blue-700
+                         dark:file:bg-blue-900/20 dark:file:text-blue-400
+                         hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
+              />
+            </div>
+
+            {jsonFile && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  <span className="font-medium">Файл:</span> {jsonFile.name}
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  <span className="font-medium">Размер:</span> {(jsonFile.size / 1024).toFixed(2)} KB
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button onClick={handleValidate} disabled={!jsonContent || validating || loading} variant="primary">
+                {validating ? 'Проверка...' : 'Проверить'}
+              </Button>
+              <Button onClick={handleClear} disabled={!jsonContent || loading} variant="secondary">
+                Очистить
+              </Button>
+            </div>
+          </div>
+
+          {/* Import Mode */}
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-6 transition-colors duration-200">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Режим импорта</h2>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => setImportMode('skip')}
+                className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${
+                  importMode === 'skip'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    importMode === 'skip' ? 'border-purple-600 bg-purple-600' : 'border-gray-300 dark:border-gray-600'
+                  }`}>
+                    {importMode === 'skip' && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Пропускать</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Не изменять существующие</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setImportMode('update')}
+                className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${
+                  importMode === 'update'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    importMode === 'update' ? 'border-purple-600 bg-purple-600' : 'border-gray-300 dark:border-gray-600'
+                  }`}>
+                    {importMode === 'update' && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Обновлять</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Изменять существующие</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setImportMode('overwrite')}
+                className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${
+                  importMode === 'overwrite'
+                    ? 'border-red-600 bg-red-50 dark:bg-red-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    importMode === 'overwrite' ? 'border-red-600 bg-red-600' : 'border-gray-300 dark:border-gray-600'
+                  }`}>
+                    {importMode === 'overwrite' && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Перезаписать</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Удалить все и записать новые</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Validation Results */}
         {validationResult && (
-          <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>Результаты валидации</h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px 0' }}>Всего записей</p>
-                <p style={{ fontSize: '24px', fontWeight: 600, color: '#1a1a1a', margin: 0 }}>{validationResult.totalRecords}</p>
+          <div className="mt-6 bg-white dark:bg-[#16213e] rounded-lg shadow-md p-6 transition-colors duration-200">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Результаты валидации</h2>
+            
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Всего</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{validationResult.totalRecords}</p>
               </div>
-              <div style={{ padding: '16px', background: validationResult.valid ? '#d1fae5' : '#fee2e2', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: validationResult.valid ? '#065f46' : '#991b1b', margin: '0 0 8px 0' }}>Валидные</p>
-                <p style={{ fontSize: '24px', fontWeight: 600, color: validationResult.valid ? '#047857' : '#b91c1c', margin: 0 }}>{validationResult.validRecords}</p>
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-xs text-green-600 dark:text-green-400 mb-1">Валидно</p>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-200">{validationResult.validRecords}</p>
               </div>
-              <div style={{ padding: '16px', background: validationResult.invalidRecords > 0 ? '#fee2e2' : '#d1fae5', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: validationResult.invalidRecords > 0 ? '#991b1b' : '#065f46', margin: '0 0 8px 0' }}>Невалидные</p>
-                <p style={{ fontSize: '24px', fontWeight: 600, color: validationResult.invalidRecords > 0 ? '#b91c1c' : '#047857', margin: 0 }}>{validationResult.invalidRecords}</p>
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-xs text-red-600 dark:text-red-400 mb-1">Ошибки</p>
+                <p className="text-2xl font-bold text-red-900 dark:text-red-200">{validationResult.invalidRecords}</p>
               </div>
-              <div style={{ padding: '16px', background: validationResult.valid ? '#d1fae5' : '#fef3c7', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: validationResult.valid ? '#065f46' : '#92400e', margin: '0 0 8px 0' }}>Статус</p>
-                <p style={{ fontSize: '16px', fontWeight: 600, color: validationResult.valid ? '#047857' : '#b45309', margin: 0 }}>
-                  {validationResult.valid ? '✓ Все валидно' : '✕ Есть ошибки'}
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Статус</p>
+                <p className={`text-lg font-bold ${validationResult.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {validationResult.valid ? '✓ Валидно' : '✕ Ошибки'}
                 </p>
               </div>
             </div>
 
             {validationResult.errors.length > 0 && (
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '12px' }}>Ошибки</h3>
-                <div style={{ maxHeight: '300px', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ошибки валидации</h3>
+                <div className="max-h-60 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                   {validationResult.errors.map((err, idx) => (
-                    <div key={idx} style={{ padding: '12px 16px', borderBottom: idx === validationResult.errors.length - 1 ? 'none' : '1px solid #e5e7eb' }}>
-                      <p style={{ fontSize: '13px', fontWeight: 500, color: '#b91c1c', margin: '0 0 4px 0' }}>Запись #{err.index + 1}</p>
-                      <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#6b7280' }}>
+                    <div key={idx} className="p-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400">Запись #{err.index + 1}</p>
+                      <ul className="mt-1 space-y-1">
                         {err.errors.map((e, i) => (
-                          <li key={i}>{e}</li>
+                          <li key={i} className="text-xs text-red-500 dark:text-red-300">• {e}</li>
                         ))}
                       </ul>
                     </div>
@@ -472,38 +371,48 @@ export const ImportPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div className="mt-6 flex gap-3">
+              <Button
+                onClick={handleImport}
+                disabled={!validationResult.valid || loading}
+                variant="primary"
+              >
+                {loading ? 'Импорт...' : 'Импортировать'}
+              </Button>
+            </div>
           </div>
         )}
 
         {/* Import Results */}
         {importResult && (
-          <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>Результаты импорта</h2>
+          <div className="mt-6 bg-white dark:bg-[#16213e] rounded-lg shadow-md p-6 transition-colors duration-200">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Результаты импорта</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ padding: '16px', background: '#d1fae5', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: '#065f46', margin: '0 0 8px 0' }}>Импортировано</p>
-                <p style={{ fontSize: '24px', fontWeight: 600, color: '#047857', margin: 0 }}>{importResult.imported}</p>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-xs text-green-600 dark:text-green-400 mb-1">Импортировано</p>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-200">{importResult.imported}</p>
               </div>
               {importResult.updated !== undefined && (
-                <div style={{ padding: '16px', background: '#dbeafe', borderRadius: '8px' }}>
-                  <p style={{ fontSize: '13px', color: '#1e40af', margin: '0 0 8px 0' }}>Обновлено</p>
-                  <p style={{ fontSize: '24px', fontWeight: 600, color: '#1e40af', margin: 0 }}>{importResult.updated}</p>
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Обновлено</p>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{importResult.updated}</p>
                 </div>
               )}
-              <div style={{ padding: '16px', background: '#fef3c7', borderRadius: '8px' }}>
-                <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 8px 0' }}>Пропущено</p>
-                <p style={{ fontSize: '24px', fontWeight: 600, color: '#b45309', margin: 0 }}>{importResult.skipped}</p>
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mb-1">Пропущено</p>
+                <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-200">{importResult.skipped}</p>
               </div>
             </div>
 
             {importResult.errors.length > 0 && (
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '12px' }}>Ошибки импорта</h3>
-                <div style={{ maxHeight: '200px', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ошибки импорта</h3>
+                <div className="max-h-48 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                   {importResult.errors.map((err, idx) => (
-                    <div key={idx} style={{ padding: '12px 16px', borderBottom: idx === importResult.errors.length - 1 ? 'none' : '1px solid #e5e7eb' }}>
-                      <p style={{ fontSize: '13px', fontWeight: 500, color: '#b91c1c', margin: 0 }}>Запись #{err.index + 1}: {err.error}</p>
+                    <div key={idx} className="p-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400">Запись #{err.index + 1}: {err.error}</p>
                     </div>
                   ))}
                 </div>
@@ -511,7 +420,7 @@ export const ImportPage: React.FC = () => {
             )}
 
             {importResult.success && importResult.errors.length === 0 && (
-              <div style={{ padding: '12px 16px', background: '#d1fae5', color: '#065f46', borderRadius: '6px' }}>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
                 ✓ Импорт успешно завершен!
               </div>
             )}
