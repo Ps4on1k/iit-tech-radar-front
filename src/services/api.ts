@@ -176,10 +176,11 @@ export const authApi = {
 };
 
 export const importApi = {
-  importTechRadar: async (data: TechRadarEntity[], options?: { skipExisting?: boolean; updateExisting?: boolean }) => {
+  importTechRadar: async (data: TechRadarEntity[], options?: { skipExisting?: boolean; updateExisting?: boolean; overwrite?: boolean }) => {
     const params = new URLSearchParams();
     if (options?.skipExisting) params.append('skipExisting', 'true');
     if (options?.updateExisting) params.append('updateExisting', 'true');
+    if (options?.overwrite) params.append('overwrite', 'true');
     const response = await api.post(`/import/tech-radar?${params.toString()}`, data);
     return response.data;
   },
@@ -189,8 +190,12 @@ export const importApi = {
     return response.data;
   },
 
-  validateTechRadar: async (data: TechRadarEntity[]) => {
-    const response = await api.post('/import/tech-radar/validate', data);
+  validateTechRadar: async (data: TechRadarEntity[], options?: { skipExisting?: boolean; updateExisting?: boolean; overwrite?: boolean }) => {
+    const params = new URLSearchParams();
+    if (options?.skipExisting) params.append('skipExisting', 'true');
+    if (options?.updateExisting) params.append('updateExisting', 'true');
+    if (options?.overwrite) params.append('overwrite', 'true');
+    const response = await api.post(`/import/tech-radar/validate?${params.toString()}`, data);
     return response.data;
   },
 };

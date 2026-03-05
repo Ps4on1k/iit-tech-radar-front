@@ -19,7 +19,7 @@ interface ImportResult {
   imported: number;
   skipped: number;
   updated?: number;
-  errors: Array<{ index: number; error: string }>;
+  errors?: Array<{ index: number; id?: string; message: string }>;
 }
 
 export const ImportPage: React.FC = () => {
@@ -33,7 +33,7 @@ export const ImportPage: React.FC = () => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [importMode, setImportMode] = useState<'skip' | 'update' | 'overwrite'>('update');
+  const [importMode, setImportMode] = useState<'skip' | 'update' | 'overwrite'>('overwrite');
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +78,13 @@ export const ImportPage: React.FC = () => {
         return;
       }
 
-      const result = await importApi.validateTechRadar(data);
+      // Передаем параметры импорта для корректной валидации
+      // overwrite не требует ID, update и skip - требуют
+      const result = await importApi.validateTechRadar(data, {
+        skipExisting: importMode === 'skip',
+        updateExisting: importMode === 'update',
+        overwrite: importMode === 'overwrite',
+      });
       setValidationResult(result);
 
       if (!result.valid) {
@@ -116,7 +122,8 @@ export const ImportPage: React.FC = () => {
 
       const result = await importApi.importTechRadar(data, {
         skipExisting: importMode === 'skip',
-        updateExisting: importMode === 'update' || importMode === 'overwrite',
+        updateExisting: importMode === 'update',
+        overwrite: importMode === 'overwrite',
       });
 
       setImportResult(result);
@@ -406,20 +413,20 @@ export const ImportPage: React.FC = () => {
               </div>
             </div>
 
-            {importResult.errors.length > 0 && (
+            {(importResult.errors && importResult.errors.length > 0) && (
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ошибки импорта</h3>
                 <div className="max-h-48 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                   {importResult.errors.map((err, idx) => (
                     <div key={idx} className="p-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400">Запись #{err.index + 1}: {err.error}</p>
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400">Запись #{err.index + 1}: {err.message}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {importResult.success && importResult.errors.length === 0 && (
+            {importResult.success && (!importResult.errors || importResult.errors.length === 0) && (
               <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
                 ✓ Импорт успешно завершен!
               </div>
