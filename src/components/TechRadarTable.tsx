@@ -125,6 +125,16 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
     return <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
   };
 
+  // Проверка: дедлайн обновления ближе 2 недель
+  const isDeadlineSoon = (entity: TechRadarEntity): boolean => {
+    if (!entity.versionUpdateDeadline) return false;
+    const now = new Date();
+    const deadline = new Date(entity.versionUpdateDeadline);
+    const diffInDays = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    // Подсветка если дедлайн прошёл или наступит в ближайшие 14 дней
+    return diffInDays <= 14;
+  };
+
   if (!data || data.length === 0) {
     return <p className="text-gray-600 dark:text-gray-400 text-center py-5">Нет данных</p>;
   }
@@ -266,12 +276,20 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((entity) => (
-              <tr
-                key={entity.id}
-                onClick={() => onRowClick?.(entity)}
-                className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''}`}
-              >
+            {paginatedData.map((entity) => {
+              const deadlineSoon = isDeadlineSoon(entity);
+              return (
+                <tr
+                  key={entity.id}
+                  onClick={() => onRowClick?.(entity)}
+                  className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${
+                    onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''
+                  } ${
+                    deadlineSoon 
+                      ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30' 
+                      : ''
+                  }`}
+                >
                 <td className="px-3 py-2.5 text-sm">
                   <span className="font-medium text-gray-900 dark:text-gray-100">{entity.name}</span>
                 </td>
@@ -313,7 +331,8 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.license}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.owner}</td>
               </tr>
-            ))}
+              );
+          })}
           </tbody>
         </table>
       </div>
