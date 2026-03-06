@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { techRadarApi } from '../services/api';
 import type { TechRadarEntity, TechRadarType, TechRadarSubtype, TechRadarCategory, MaturityLevel, RiskLevel, SupportStatus, CostFactor, ContributionFrequency, PerformanceImpact } from '../types';
 import { validateTechRadarEntity } from '../utils/validation';
+import { useNotification } from '../hooks/useNotification';
 
 interface TechRadarModalProps {
   entity?: TechRadarEntity | null; // Если null/undefined - режим создания
@@ -173,6 +174,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose, onUpdate }) => {
   const { isAdmin, isAdminOrManager } = useAuth();
+  const notification = useNotification();
   const isCreateMode = !entity;
   const [localEntity, setLocalEntity] = useState<TechRadarEntity | null>(
     entity || null
@@ -258,10 +260,13 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       const { id, ...entityToSave } = entityToValidate;
 
       await techRadarApi.create(entityToSave as TechRadarEntity);
+      notification.success(`Технология "${localEntity.name}" успешно создана`, { title: 'Создание технологии' });
       onUpdate?.();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка создания');
+      const errorMsg = err.response?.data?.error || 'Ошибка создания';
+      notification.error(errorMsg, { title: 'Ошибка' });
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -302,10 +307,13 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
       delete (updatePayload as any).updatedAt;
 
       await techRadarApi.update(localEntity.id, updatePayload);
+      notification.success(`Технология "${localEntity.name}" успешно обновлена`, { title: 'Обновление технологии' });
       onUpdate?.();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка сохранения');
+      const errorMsg = err.response?.data?.error || 'Ошибка сохранения';
+      notification.error(errorMsg, { title: 'Ошибка' });
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -322,10 +330,13 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
     try {
       setSaving(true);
       await techRadarApi.delete(localEntity.id);
+      notification.success(`Технология "${localEntity.name}" успешно удалена`, { title: 'Удаление технологии' });
       onClose();
       onUpdate?.();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка удаления');
+      const errorMsg = err.response?.data?.error || 'Ошибка удаления';
+      notification.error(errorMsg, { title: 'Ошибка' });
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }

@@ -132,11 +132,15 @@ export const ImportPage: React.FC = () => {
         notification.success(`Импортировано ${result.imported} записей`, { title: 'Импорт завершен' });
         setShouldRedirect(true);
       } else {
+        const errorMsg = result.errors?.[0]?.message || 'Импорт завершен с ошибками';
+        notification.error(errorMsg, { title: 'Ошибка импорта' });
         setError('Импорт завершен с ошибками');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Ошибка импорта');
+      const errorMsg = error.response?.data?.error || 'Ошибка импорта';
+      notification.error(errorMsg, { title: 'Ошибка' });
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -158,9 +162,12 @@ export const ImportPage: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Ошибка экспорта');
+
+      notification.success('Экспорт успешно выполнен', { title: 'Экспорт' });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || 'Ошибка экспорта';
+      notification.error(errorMsg, { title: 'Ошибка' });
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
