@@ -33,7 +33,7 @@ export const ImportPage: React.FC = () => {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [importMode, setImportMode] = useState<'skip' | 'update' | 'overwrite'>('overwrite');
+  const [importMode, setImportMode] = useState<'skip' | 'update' | 'overwrite'>('skip');
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -429,6 +429,12 @@ export const ImportPage: React.FC = () => {
             {importResult.success && (!importResult.errors || importResult.errors.length === 0) && (
               <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
                 ✓ Импорт успешно завершен!
+              </div>
+            )}
+
+            {!importResult.success && importResult.imported > 0 && (
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 rounded-lg">
+                ⚠ Импорт завершен с ошибками. Импортировано записей: {importResult.imported}
               </div>
             )}
           </div>
