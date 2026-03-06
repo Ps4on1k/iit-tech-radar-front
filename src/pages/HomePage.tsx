@@ -49,6 +49,12 @@ export const HomePage: React.FC = () => {
   }, []);
 
   const handleRowClick = useCallback((entity: TechRadarEntity) => {
+    // Для всех пользователей - открываем страницу просмотра
+    window.location.href = `/technology/${entity.id}`;
+  }, []);
+
+  const handleEdit = useCallback((entity: TechRadarEntity) => {
+    // Для Admin/Manager - открываем модалку редактирования
     setSelectedEntity(entity);
   }, []);
 
@@ -160,9 +166,11 @@ export const HomePage: React.FC = () => {
           <TechRadarTable
             data={filteredData}
             onRowClick={handleRowClick}
+            onEdit={handleEdit}
             radarCategory={radarCategory}
             radarType={radarType}
             onRadarFilter={handleRadarFilter}
+            isAdminOrManager={isAdminOrManager}
           />
         </div>
       </main>

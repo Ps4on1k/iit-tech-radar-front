@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { HomePage, LoginPage, UsersPage, ImportPage, AuditLogPage } from './pages';
+import { HomePage, LoginPage, UsersPage, ImportPage, AuditLogPage, TechnologyViewPage } from './pages';
 import { Navbar } from './components';
 import './App.css';
 
@@ -117,6 +117,14 @@ const AppRoutes: React.FC = () => {
             <AdminRoute>
               <AuditLogPage />
             </AdminRoute>
+          }
+        />
+        <Route
+          path="/technology/:id"
+          element={
+            <ProtectedRoute>
+              <TechnologyViewPage />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

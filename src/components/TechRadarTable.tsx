@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { TechRadarEntity, TechRadarCategory, TechRadarType } from '../types';
+import type { ColumnConfig } from './ColumnManager';
 
 interface TechRadarTableProps {
   data: TechRadarEntity[];
@@ -7,7 +8,21 @@ interface TechRadarTableProps {
   radarType?: TechRadarType;
   onRowClick?: (entity: TechRadarEntity) => void;
   onRadarFilter?: (category?: TechRadarCategory, type?: TechRadarType) => void;
+  onEdit?: (entity: TechRadarEntity) => void;
+  isAdminOrManager?: boolean;
 }
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { key: 'name', label: 'Название', visible: true },
+  { key: 'version', label: 'Версия', visible: true },
+  { key: 'versionUpdateDeadline', label: 'Обновление', visible: true },
+  { key: 'category', label: 'Категория', visible: true },
+  { key: 'riskLevel', label: 'Риск', visible: true },
+  { key: 'type', label: 'Тип', visible: true },
+  { key: 'subtype', label: 'Подтип', visible: true },
+  { key: 'license', label: 'Лицензия', visible: true },
+  { key: 'owner', label: 'Владелец', visible: true },
+];
 
 const CATEGORY_COLORS: Record<string, string> = {
   adopt: '#00C49F',
@@ -27,7 +42,15 @@ const RISK_COLORS: Record<string, string> = {
 type SortField = 'name' | 'version' | 'category' | 'riskLevel' | 'type' | 'subtype' | 'license' | 'owner' | 'versionUpdateDeadline';
 type SortOrder = 'asc' | 'desc';
 
-export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCategory, radarType, onRowClick, onRadarFilter }) => {
+export const TechRadarTable: React.FC<TechRadarTableProps> = ({ 
+  data, 
+  radarCategory, 
+  radarType, 
+  onRowClick, 
+  onRadarFilter,
+  onEdit,
+  isAdminOrManager = false 
+}) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState({
@@ -43,6 +66,23 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
   // Сортировка по умолчанию: по дате обновления (чем ближе дата, тем выше)
   const [sortField, setSortField] = useState<SortField>('versionUpdateDeadline');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  
+  // Управление колонками
+  const [columns] = useState<ColumnConfig[]>(() => {
+    const saved = localStorage.getItem('techradar_table_columns');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return DEFAULT_COLUMNS;
+      }
+    }
+    return DEFAULT_COLUMNS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('techradar_table_columns', JSON.stringify(columns));
+  }, [columns]);
 
   const filteredData = useMemo(() => {
     return data.filter(entity => {
@@ -285,13 +325,29 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({ data, radarCateg
                   className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${
                     onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''
                   } ${
-                    deadlineSoon 
-                      ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30' 
+                    deadlineSoon
+                      ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30'
                       : ''
                   }`}
                 >
                 <td className="px-3 py-2.5 text-sm">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{entity.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{entity.name}</span>
+                    {isAdminOrManager && onEdit && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(entity);
+                        }}
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                        title="Редактировать технологию"
+                      >
+                        <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 text-xs">
                   <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-gray-900 dark:text-gray-100">{entity.version}</span>
