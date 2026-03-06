@@ -5,3 +5,4 @@ export { UsersPage } from './UsersPage';
 export { ImportPage } from './ImportPage';
 export { AuditLogPage } from './AuditLogPage';
 export { TechnologyViewPage } from './TechnologyViewPage';
+export { DashboardsPage } from './DashboardsPage';

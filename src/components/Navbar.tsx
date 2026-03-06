@@ -38,6 +38,7 @@ export const Navbar: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   // Polling уведомлений каждые 30 секунд
   useEffect(() => {
@@ -77,16 +78,19 @@ export const Navbar: React.FC = () => {
       if (!target.closest('.notifications-dropdown')) {
         setShowNotifications(false);
       }
+      if (!target.closest('.settings-dropdown')) {
+        setShowSettingsMenu(false);
+      }
     };
 
-    if (showNotifications) {
+    if (showNotifications || showSettingsMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showNotifications]);
+  }, [showNotifications, showSettingsMenu]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -117,29 +121,35 @@ export const Navbar: React.FC = () => {
   return (
     <nav className="bg-white dark:bg-[#16213e] shadow-md border-b border-gray-200 dark:border-[#0f3460] transition-colors duration-200">
       <div className="max-w-[1400px] mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          {/* Логотип Tech Radar */}
+          <div className="w-10 h-10 flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-full h-full">
+              <circle cx="50" cy="50" r="48" fill="none" stroke="#3B82F6" strokeWidth="4"/>
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#60A5FA" strokeWidth="2" opacity="0.6"/>
+              <circle cx="50" cy="50" r="24" fill="none" stroke="#93C5FD" strokeWidth="2" opacity="0.6"/>
+              <circle cx="50" cy="50" r="12" fill="none" stroke="#BFDBFE" strokeWidth="2" opacity="0.6"/>
+              <circle cx="50" cy="50" r="6" fill="#1E40AF"/>
+              <circle cx="65" cy="35" r="4" fill="#10B981"/>
+              <circle cx="40" cy="28" r="4" fill="#F59E0B"/>
+              <circle cx="70" cy="55" r="4" fill="#EF4444"/>
+              <circle cx="30" cy="60" r="4" fill="#3B82F6"/>
+            </svg>
+          </div>
           <Link to="/" className="text-xl font-bold text-blue-600 dark:text-blue-400 no-underline hover:underline">Tech Radar</Link>
+          <Link
+            to="/dashboards"
+            className={`text-sm ${isActive('/dashboards') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
+          >
+            Дашборды
+          </Link>
           {auth.isAdmin && (
-            <div className="flex gap-4">
-              <Link
-                to="/users"
-                className={`text-sm ${isActive('/users') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
-              >
-                Пользователи
-              </Link>
-              <Link
-                to="/audit"
-                className={`text-sm ${isActive('/audit') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
-              >
-                Аудит
-              </Link>
-              <Link
-                to="/import"
-                className={`text-sm ${isActive('/import') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
-              >
-                Импорт/Экспорт
-              </Link>
-            </div>
+            <Link
+              to="/import"
+              className={`text-sm ${isActive('/import') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
+            >
+              Импорт/Экспорт
+            </Link>
           )}
           {auth.user?.role === 'manager' && (
             <Link
@@ -150,12 +160,12 @@ export const Navbar: React.FC = () => {
             </Link>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Уведомления */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center cursor-pointer border-none transition-colors"
+              className="relative w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center cursor-pointer border-none transition-colors"
               title="Уведомления"
             >
               <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,6 +224,67 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
+          {/* Переключение темы */}
+          <ThemeToggle size="md" />
+
+          {/* Меню "Управление" */}
+          {(auth.isAdmin || auth.user?.role === 'manager') && (
+            <div className="relative">
+              <button
+                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center cursor-pointer border-none transition-colors"
+                title="Управление"
+              >
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+
+              {/* Выпадающее меню управления */}
+              {showSettingsMenu && (
+                <div className="settings-dropdown absolute right-0 mt-2 w-56 bg-white dark:bg-[#16213e] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+                  <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Управление</h3>
+                  </div>
+                  <div className="py-1">
+                    {auth.isAdmin && (
+                      <>
+                        <Link
+                          to="/users"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          onClick={() => setShowSettingsMenu(false)}
+                        >
+                          <span className="text-lg">👥</span>
+                          <span>Пользователи</span>
+                        </Link>
+                        <Link
+                          to="/audit"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          onClick={() => setShowSettingsMenu(false)}
+                        >
+                          <span className="text-lg">📋</span>
+                          <span>Аудит</span>
+                        </Link>
+                      </>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowVersionModal(true);
+                        setShowSettingsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                    >
+                      <span className="text-lg">ℹ️</span>
+                      <span>О системе</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Роль пользователя */}
           {auth.isAdmin && (
             <span className="px-2.5 py-1 text-xs font-medium rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
               Администратор
@@ -224,20 +295,13 @@ export const Navbar: React.FC = () => {
               Менеджер
             </span>
           )}
-          <span className="text-gray-600 dark:text-gray-300 text-sm">
+
+          {/* Имя пользователя */}
+          <span className="text-gray-600 dark:text-gray-300 text-sm px-2">
             {auth.user?.firstName} {auth.user?.lastName}
           </span>
-          <ThemeToggle size="md" />
-          <button
-            onClick={() => {
-              console.log('Version button clicked!');
-              setShowVersionModal(true);
-            }}
-            className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center cursor-pointer border-none shadow-md transition-colors"
-            title="О системе (версии)"
-          >
-            ?
-          </button>
+
+          {/* Кнопка выхода */}
           <button
             onClick={() => auth.logout()}
             className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 border-none cursor-pointer transition-colors rounded"
