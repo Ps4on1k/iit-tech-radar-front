@@ -165,18 +165,38 @@ export const AIUpdatePage: React.FC = () => {
 
         {/* Статус глобальных настроек */}
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                {globalSettings.apiKey ? 'AI API настроено' : 'AI API не настроено'}
-              </p>
-              <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                {globalSettings.apiEndpoint || 'Endpoint не указан'}
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                  {globalSettings.apiKey ? 'AI API настроено' : 'AI API не настроено'}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  {globalSettings.apiEndpoint || 'Endpoint не указан'}
+                </p>
+              </div>
+              <div className="text-sm text-blue-700 dark:text-blue-300">
+                Частота обновления: {globalSettings.updateFrequency || 24} ч.
+              </div>
             </div>
-            <div className="text-sm text-blue-700 dark:text-blue-300">
-              Частота обновления: {globalSettings.updateFrequency || 24} ч.
-            </div>
+            {globalSettings.defaultPrompt && (
+              <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  <span className="font-medium">Общий промпт:</span>{' '}
+                  {globalSettings.defaultPrompt.length > 100 
+                    ? globalSettings.defaultPrompt.substring(0, 100) + '...' 
+                    : globalSettings.defaultPrompt}
+                </p>
+              </div>
+            )}
+            {!globalSettings.apiKey && (
+              <div className="pt-2 mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+                <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                  <span className="font-medium">💡 Подсказка:</span> Если не указаны API Key и Endpoint, 
+                  будет использован локальный AI сервис <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">iit-tech-radar-qwen-agent</code> через RabbitMQ
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,7 +251,7 @@ export const AIUpdatePage: React.FC = () => {
         isOpen={showGlobalSettingsModal}
         onClose={() => setShowGlobalSettingsModal(false)}
         title="Настройки AI API"
-        size="md"
+        size="lg"
       >
         <div className="space-y-4">
           <Input
@@ -256,12 +276,37 @@ export const AIUpdatePage: React.FC = () => {
             min={1}
             max={168}
           />
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 rounded-lg text-sm">
-            <p className="font-medium">Рекомендуемые AI сервисы:</p>
-            <ul className="mt-2 space-y-1 list-disc list-inside">
-              <li>GigaChat (Сбер) - бесплатно, работает из России</li>
-              <li>YandexGPT (Яндекс) - бесплатно, работает из России</li>
-              <li>Kandinsky - бесплатно, работает из России</li>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Общий промпт для AI обновления
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows={4}
+              value={globalSettings.defaultPrompt || ''}
+              onChange={(e) => setGlobalSettings({ ...globalSettings, defaultPrompt: e.target.value })}
+              placeholder="Введите общий промпт для всех запросов к AI..."
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Этот промпт будет использоваться для всех запросов к AI при обновлении технологий
+            </p>
+          </div>
+          {!globalSettings.apiKey && (
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm border border-yellow-200 dark:border-yellow-800">
+              <p className="font-medium">💡 Подсказка:</p>
+              <p className="text-xs mt-1">
+                Если не указаны API Key и Endpoint, будет использован локальный AI сервис{' '}
+                <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">iit-tech-radar-qwen-agent</code> через RabbitMQ.
+                В этом случае настройте только общий промпт и включите нужные поля.
+              </p>
+            </div>
+          )}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg text-sm">
+            <p className="font-medium">Как это работает:</p>
+            <ul className="mt-2 space-y-1 text-xs">
+              <li>• Включите поля, которые нужно обновлять через AI</li>
+              <li>• Настройте общий промпт в этом окне</li>
+              <li>• AI будет анализировать технологию и обновлять включенные поля</li>
             </ul>
           </div>
           <div className="flex justify-end gap-3 pt-4">

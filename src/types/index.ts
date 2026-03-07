@@ -87,6 +87,7 @@ export interface AIConfigGlobalSettings {
   apiKey?: string;
   apiEndpoint?: string;
   updateFrequency?: number; // в часах
+  defaultPrompt?: string; // Общий промпт для всех запросов
 }
 
 export interface FilterState {
