@@ -4,26 +4,26 @@ import { auditApi, type AuditLog, type AuditLogFilter, type PaginatedAuditLogs }
 import { Navigate } from 'react-router-dom';
 
 const ACTION_COLORS: Record<AuditLog['action'], string> = {
-  CREATE: 'bg-green-100 text-green-800',
-  UPDATE: 'bg-blue-100 text-blue-800',
-  DELETE: 'bg-red-100 text-red-800',
-  LOGIN: 'bg-purple-100 text-purple-800',
-  LOGOUT: 'bg-gray-100 text-gray-800',
-  IMPORT: 'bg-yellow-100 text-yellow-800',
-  EXPORT: 'bg-indigo-100 text-indigo-800',
-  PASSWORD_CHANGE: 'bg-pink-100 text-pink-800',
+  CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  UPDATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+  LOGIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+  LOGOUT: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  IMPORT: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+  EXPORT: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400',
+  PASSWORD_CHANGE: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400',
 };
 
 const ENTITY_COLORS: Record<AuditLog['entity'], string> = {
-  TechRadar: 'bg-teal-100 text-teal-800',
-  User: 'bg-orange-100 text-orange-800',
-  Import: 'bg-cyan-100 text-cyan-800',
-  Auth: 'bg-violet-100 text-violet-800',
+  TechRadar: 'bg-teal-100 text-teal-800 dark:bg-teal-900/20 dark:text-teal-400',
+  User: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+  Import: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400',
+  Auth: 'bg-violet-100 text-violet-800 dark:bg-violet-900/20 dark:text-violet-400',
 };
 
 const STATUS_COLORS: Record<AuditLog['status'], string> = {
-  SUCCESS: 'bg-green-100 text-green-800',
-  FAILURE: 'bg-red-100 text-red-800',
+  SUCCESS: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  FAILURE: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
 };
 
 export const AuditLogPage: React.FC = () => {
@@ -129,23 +129,23 @@ export const AuditLogPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Аудит лог</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Аудит лог</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           Журнал действий пользователей в системе
         </p>
       </div>
 
       {/* Фильтры */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white dark:bg-[#16213e] rounded-lg shadow p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Действие
             </label>
             <select
               value={filter.action || ''}
               onChange={(e) => handleFilterChange('action', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Все действия</option>
               <option value="CREATE">Создание</option>
@@ -160,13 +160,13 @@ export const AuditLogPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Сущность
             </label>
             <select
               value={filter.entity || ''}
               onChange={(e) => handleFilterChange('entity', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Все сущности</option>
               <option value="TechRadar">Технологии</option>
@@ -177,13 +177,13 @@ export const AuditLogPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Статус
             </label>
             <select
               value={filter.status || ''}
               onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Все статусы</option>
               <option value="SUCCESS">Успешно</option>
@@ -194,7 +194,7 @@ export const AuditLogPage: React.FC = () => {
           <div className="flex items-end">
             <button
               onClick={handleClearFilters}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               Сбросить фильтры
             </button>
@@ -203,52 +203,52 @@ export const AuditLogPage: React.FC = () => {
       </div>
 
       {/* Таблица */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-[#16213e] rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : error ? (
-          <div className="p-4 bg-red-50 text-red-800">
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400">
             {error}
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             Нет записей для отображения
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Время
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Действие
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Сущность
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Статус
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Пользователь
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       IP адрес
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Детали
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-[#16213e] divide-y divide-gray-200 dark:divide-gray-700">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {formatDate(log.timestamp)}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -261,7 +261,7 @@ export const AuditLogPage: React.FC = () => {
                           {log.entity}
                         </span>
                         {log.entityId && (
-                          <span className="ml-2 text-xs text-gray-500">
+                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                             {log.entityId.slice(0, 8)}...
                           </span>
                         )}
@@ -271,18 +271,18 @@ export const AuditLogPage: React.FC = () => {
                           {log.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                         {log.userId ? log.userId.slice(0, 8) + '...' : 'Система'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                         {log.ipAddress || '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                         <details>
-                          <summary className="cursor-pointer hover:text-blue-600">
+                          <summary className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400">
                             {log.details ? 'Показать' : '-'}
                           </summary>
-                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-48">
+                          <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-900 dark:text-gray-100 overflow-auto max-h-48">
                             {formatDetails(log.details)}
                           </pre>
                         </details>
@@ -294,10 +294,10 @@ export const AuditLogPage: React.FC = () => {
             </div>
 
             {/* Пагинация */}
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <label className="text-sm text-gray-700">
+                  <label className="text-sm text-gray-700 dark:text-gray-300">
                     Записей на странице:
                     <select
                       value={limit}
@@ -305,7 +305,7 @@ export const AuditLogPage: React.FC = () => {
                         setLimit(Number(e.target.value));
                         setPage(1);
                       }}
-                      className="ml-2 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="ml-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -313,7 +313,7 @@ export const AuditLogPage: React.FC = () => {
                       <option value={100}>100</option>
                     </select>
                   </label>
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     Всего: {pagination.total}
                   </span>
                 </div>
@@ -322,14 +322,14 @@ export const AuditLogPage: React.FC = () => {
                   <button
                     onClick={() => setPage(1)}
                     disabled={page === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                   >
                     Первая
                   </button>
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                   >
                     Пред.
                   </button>
@@ -337,14 +337,14 @@ export const AuditLogPage: React.FC = () => {
                   {getPageNumbers().map((pageNum, index) => (
                     <React.Fragment key={index}>
                       {pageNum === '...' ? (
-                        <span className="px-3 py-1 text-sm text-gray-500">...</span>
+                        <span className="px-3 py-1 text-sm text-gray-500 dark:text-gray-400">...</span>
                       ) : (
                         <button
                           onClick={() => setPage(Number(pageNum))}
                           className={`px-3 py-1 text-sm border rounded-md ${
                             page === pageNum
                               ? 'bg-blue-600 text-white border-blue-600'
-                              : 'border-gray-300 hover:bg-gray-100'
+                              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                           }`}
                         >
                           {pageNum}
@@ -356,14 +356,14 @@ export const AuditLogPage: React.FC = () => {
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === pagination.totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                   >
                     След.
                   </button>
                   <button
                     onClick={() => setPage(pagination.totalPages)}
                     disabled={page === pagination.totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                   >
                     Последняя
                   </button>
