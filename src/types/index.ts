@@ -73,6 +73,22 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+export interface AIConfig {
+  id: string;
+  fieldName: string;
+  displayName: string;
+  enabled: boolean;
+  prompt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIConfigGlobalSettings {
+  apiKey?: string;
+  apiEndpoint?: string;
+  updateFrequency?: number; // в часах
+}
+
 export interface FilterState {
   category?: TechRadarCategory;
   type?: TechRadarType;

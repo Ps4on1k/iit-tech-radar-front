@@ -6,3 +6,4 @@ export { ImportPage } from './ImportPage';
 export { AuditLogPage } from './AuditLogPage';
 export { TechnologyViewPage } from './TechnologyViewPage';
 export { DashboardsPage } from './DashboardsPage';
+export { AIUpdatePage } from './AIUpdatePage';

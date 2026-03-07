@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole } from '../types';
+import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole, AIConfig, AIConfigGlobalSettings } from '../types';
 
 // Use relative path - nginx will proxy /api to backend
 const API_BASE_URL = '/api';
@@ -212,14 +212,14 @@ export const auditApi = {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
-    
+
     if (filter.userId) params.append('userId', filter.userId);
     if (filter.action) params.append('action', filter.action);
     if (filter.entity) params.append('entity', filter.entity);
     if (filter.status) params.append('status', filter.status);
     if (filter.startDate) params.append('startDate', filter.startDate);
     if (filter.endDate) params.append('endDate', filter.endDate);
-    
+
     const response = await api.get(`/audit?${params.toString()}`);
     return response.data;
   },
@@ -231,6 +231,42 @@ export const auditApi = {
 
   getStatistics: async (): Promise<AuditStatistics> => {
     const response = await api.get('/audit/statistics');
+    return response.data;
+  },
+};
+
+export const aiConfigApi = {
+  getAll: async (): Promise<AIConfig[]> => {
+    const response = await api.get('/ai-config');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<AIConfig> => {
+    const response = await api.get(`/ai-config/${id}`);
+    return response.data;
+  },
+
+  create: async (config: { fieldName: string; displayName: string; enabled?: boolean; prompt?: string }): Promise<AIConfig> => {
+    const response = await api.post('/ai-config', config);
+    return response.data;
+  },
+
+  update: async (id: string, config: { enabled?: boolean; prompt?: string }): Promise<AIConfig> => {
+    const response = await api.put(`/ai-config/${id}`, config);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/ai-config/${id}`);
+  },
+
+  getGlobalSettings: async (): Promise<AIConfigGlobalSettings> => {
+    const response = await api.get('/ai-config/global-settings');
+    return response.data;
+  },
+
+  updateGlobalSettings: async (settings: AIConfigGlobalSettings): Promise<AIConfigGlobalSettings> => {
+    const response = await api.put('/ai-config/global-settings', settings);
     return response.data;
   },
 };

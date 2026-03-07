@@ -25,3 +25,6 @@ export type { GaugeProps } from './Gauge';
 
 export { Tooltip, InfoIcon } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
+
+export { Switch } from './Switch';
+export type { SwitchProps } from './Switch';

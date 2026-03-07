@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { HomePage, LoginPage, UsersPage, ImportPage, AuditLogPage, TechnologyViewPage, DashboardsPage } from './pages';
+import { HomePage, LoginPage, UsersPage, ImportPage, AuditLogPage, TechnologyViewPage, DashboardsPage, AIUpdatePage } from './pages';
 import { Navbar } from './components';
 import './App.css';
 
@@ -133,6 +133,14 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <DashboardsPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-update"
+          element={
+            <AdminRoute>
+              <AIUpdatePage />
+            </AdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
