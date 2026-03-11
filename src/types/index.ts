@@ -135,6 +135,7 @@ export interface MigrationStatistics {
   byStatus: Record<string, number>;
   averageProgress: number;
   completedCount: number;
+  backlogWithNoMetadata: number;
 }
 
 export interface SortState {

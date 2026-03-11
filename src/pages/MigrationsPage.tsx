@@ -383,9 +383,10 @@ export const MigrationsPage: React.FC = () => {
   const [migrationItems, setMigrationItems] = useState<MigrationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'backlog' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState<MigrationStatistics | null>(null);
+  const [displayOrder, setDisplayOrder] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -410,6 +411,9 @@ export const MigrationsPage: React.FC = () => {
         ]);
         setMigrationItems(metadataResponse);
         setStats(statsResponse);
+        // Инициализируем порядок отображения на основе priority
+        const sorted = [...metadataResponse].sort((a, b) => a.priority - b.priority);
+        setDisplayOrder(sorted.map(i => i.metadataId));
       } catch (err: any) {
         console.error('Ошибка загрузки данных:', err);
         setError(err.response?.data?.message || 'Ошибка загрузки данных');
@@ -421,14 +425,42 @@ export const MigrationsPage: React.FC = () => {
     fetchData();
   }, [isAuthenticated]);
 
+  // Синхронизация displayOrder при изменении migrationItems
+  useEffect(() => {
+    if (migrationItems.length > 0 && displayOrder.length === 0) {
+      const sorted = [...migrationItems].sort((a, b) => a.priority - b.priority);
+      setDisplayOrder(sorted.map(i => i.metadataId));
+    }
+  }, [migrationItems]);
+
   const filteredItems = useMemo(() => {
-    return migrationItems.filter(item => {
-      if (filter === 'active' && item.status === 'completed') return false;
+    // Сначала фильтруем по статусу и поиску
+    const items = migrationItems.filter(item => {
+      // Фильтр по статусу
+      if (filter === 'active') {
+        // Активные = не completed и не backlog (включая без статуса)
+        if (item.status === 'completed') return false;
+        if (item.status === 'backlog' || !item.hasMetadata) return false;
+      }
       if (filter === 'completed' && item.status !== 'completed') return false;
+      if (filter === 'backlog') {
+        // Бэклог = backlog + без статуса (hasMetadata = false)
+        if (item.status !== 'backlog' && item.hasMetadata) return false;
+      }
+      
+      // Поиск по названию
       if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [migrationItems, filter, searchTerm]);
+
+    // Сортируем по displayOrder (порядку перетаскивания)
+    const orderMap = new Map(displayOrder.map((id, index) => [id, index]));
+    return items.sort((a, b) => {
+      const aIndex = orderMap.get(a.metadataId) ?? 999999;
+      const bIndex = orderMap.get(b.metadataId) ?? 999999;
+      return aIndex - bIndex;
+    });
+  }, [migrationItems, filter, searchTerm, displayOrder]);
 
   const handleSaveFields = async (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => {
     // Преобразуем recommendedAlternatives в формат для API (simple-array)
@@ -478,26 +510,29 @@ export const MigrationsPage: React.FC = () => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = filteredItems.findIndex(item => item.metadataId === active.id);
-      const newIndex = filteredItems.findIndex(item => item.metadataId === over.id);
+      const oldIndex = displayOrder.indexOf(active.id as string);
+      const newIndex = displayOrder.indexOf(over.id as string);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newItems = arrayMove(filteredItems, oldIndex, newIndex);
+        // Обновляем порядок отображения
+        const newDisplayOrder = arrayMove(displayOrder, oldIndex, newIndex);
+        setDisplayOrder(newDisplayOrder);
+        
+        // Получаем новые priority для элементов с hasMetadata=true
+        const priorities = newDisplayOrder
+          .map((id, index) => {
+            const item = migrationItems.find(i => i.metadataId === id);
+            if (item?.hasMetadata) {
+              return { id, priority: index };
+            }
+            return null;
+          })
+          .filter((p): p is { id: string; priority: number } => p !== null);
 
-        const priorities = newItems
-          .filter(item => item.hasMetadata)
-          .map((item, index) => ({
-            id: item.metadataId,
-            priority: index,
-          }));
-
+        // Отправляем на сервер
         if (priorities.length > 0) {
           try {
             await migrationMetadataApi.updatePriorities(priorities);
-            setMigrationItems(prev => prev.map(item => {
-              const updated = priorities.find(p => p.id === item.metadataId);
-              return updated ? { ...item, priority: updated.priority } : item;
-            }));
           } catch (err: any) {
             console.error('Ошибка обновления приоритетов:', err);
           }
@@ -586,7 +621,9 @@ export const MigrationsPage: React.FC = () => {
             </div>
             <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Бэклог</p>
-              <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.byStatus.backlog || 0}</p>
+              <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                {(stats.byStatus.backlog || 0) + migrationItems.filter(i => !i.hasMetadata).length}
+              </p>
             </div>
             <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Выполнено</p>
@@ -617,7 +654,17 @@ export const MigrationsPage: React.FC = () => {
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Активные ({migrationItems.filter(i => i.status !== 'completed').length})
+                Активные ({migrationItems.filter(i => i.status !== 'completed' && i.status !== 'backlog' && i.hasMetadata).length})
+              </button>
+              <button
+                onClick={() => setFilter('backlog')}
+                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                  filter === 'backlog'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                Бэклог ({migrationItems.filter(i => i.status === 'backlog' || !i.hasMetadata).length})
               </button>
               <button
                 onClick={() => setFilter('completed')}
