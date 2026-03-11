@@ -207,10 +207,6 @@ export const TechRadarChart: React.FC<RadarChartProps> = ({ data, radarCategory,
           </button>
         ))}
       </div>
-
-      <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
-        Кликните на точку для фильтрации по типу и категории (или просмотра деталей если одна технология)
-      </p>
     </div>
   );
 };
