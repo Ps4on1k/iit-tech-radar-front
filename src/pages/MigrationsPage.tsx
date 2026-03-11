@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { techRadarApi, migrationMetadataApi } from '../services/api';
-import type { TechRadarEntity, MigrationMetadataView, MigrationStatus, MigrationStatistics } from '../types';
+import { techRadarApi, migrationMetadataApi, migrationSnapshotsApi } from '../services/api';
+import type { TechRadarEntity, MigrationMetadataView, MigrationStatus, MigrationStatistics, MigrationSnapshot } from '../types';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { Pagination } from '../ui/Pagination';
 import {
   DndContext,
   closestCenter,
@@ -32,6 +35,7 @@ interface SortableRowProps {
   onSaveFields: (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => Promise<void>;
   getStatusColor: (status: MigrationStatus) => string;
   canDrag: boolean;
+  onCompleteMigration: (item: MigrationItem) => Promise<void>;
 }
 
 const SortableRow: React.FC<SortableRowProps> = ({
@@ -42,6 +46,7 @@ const SortableRow: React.FC<SortableRowProps> = ({
   onSaveFields,
   getStatusColor,
   canDrag,
+  onCompleteMigration,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editVersion, setEditVersion] = useState(item.versionToUpdate || '');
@@ -243,9 +248,18 @@ const SortableRow: React.FC<SortableRowProps> = ({
                   </div>
                 )}
 
-                {/* Статус */}
-                <div className="mt-3">
+                {/* Статус и кнопка завершения */}
+                <div className="mt-3 flex items-center gap-2">
                   {getStatusBadge()}
+                  {isAdminOrManager && item.status === 'completed' && (
+                    <button
+                      onClick={() => onCompleteMigration(item)}
+                      className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1"
+                      title="Переместить в архив завершенных миграций"
+                    >
+                      ✓ Завершить
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -383,12 +397,28 @@ const SortableRow: React.FC<SortableRowProps> = ({
 export const MigrationsPage: React.FC = () => {
   const { isAuthenticated, isAdminOrManager } = useAuth();
   const [migrationItems, setMigrationItems] = useState<MigrationItem[]>([]);
+  const [snapshots, setSnapshots] = useState<MigrationSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'backlog' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState<MigrationStatistics | null>(null);
   const [displayOrder, setDisplayOrder] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'migrations' | 'completed'>('migrations');
+
+  // Состояние для модального окна очистки архива
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
+
+  // Пагинация для активных миграций
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Пагинация и поиск для завершенных миграций
+  const [completedCurrentPage, setCompletedCurrentPage] = useState(1);
+  const [completedItemsPerPage, setCompletedItemsPerPage] = useState(10);
+  const [completedSearchTerm, setCompletedSearchTerm] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -407,12 +437,14 @@ export const MigrationsPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [metadataResponse, statsResponse] = await Promise.all([
+        const [metadataResponse, statsResponse, snapshotsResponse] = await Promise.all([
           migrationMetadataApi.getAll(true),
           migrationMetadataApi.getStatistics(),
+          migrationSnapshotsApi.getAll(),
         ]);
         setMigrationItems(metadataResponse);
         setStats(statsResponse);
+        setSnapshots(snapshotsResponse);
         // Инициализируем порядок отображения: сначала активные (не бэклог), потом бэклог
         const sorted = [...metadataResponse].sort((a, b) => {
           // Активные элементы (не бэклог) выше бэклога
@@ -457,7 +489,7 @@ export const MigrationsPage: React.FC = () => {
         // Бэклог = backlog + без статуса (hasMetadata = false)
         if (item.status !== 'backlog' && item.hasMetadata) return false;
       }
-      
+
       // Поиск по названию
       if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
@@ -465,12 +497,53 @@ export const MigrationsPage: React.FC = () => {
 
     // Сортируем по displayOrder (порядку перетаскивания)
     const orderMap = new Map(displayOrder.map((id, index) => [id, index]));
-    return items.sort((a, b) => {
+    const sorted = items.sort((a, b) => {
       const aIndex = orderMap.get(a.metadataId) ?? 999999;
       const bIndex = orderMap.get(b.metadataId) ?? 999999;
       return aIndex - bIndex;
     });
+
+    // Применяем пагинацию
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sorted.slice(startIndex, endIndex);
+  }, [migrationItems, filter, searchTerm, displayOrder, currentPage, itemsPerPage]);
+
+  // Фильтрация и пагинация для завершенных миграций (снапшоты)
+  const filteredSnapshots = useMemo(() => {
+    const items = snapshots.filter(snapshot => {
+      if (completedSearchTerm && !snapshot.techName.toLowerCase().includes(completedSearchTerm.toLowerCase())) return false;
+      return true;
+    });
+
+    // Применяем пагинацию
+    const startIndex = (completedCurrentPage - 1) * completedItemsPerPage;
+    const endIndex = startIndex + completedItemsPerPage;
+    return items.slice(startIndex, endIndex);
+  }, [snapshots, completedSearchTerm, completedCurrentPage, completedItemsPerPage]);
+
+  // Подсчет общего количества элементов для пагинации
+  const activeMigrationsTotalCount = useMemo(() => {
+    return migrationItems.filter(item => {
+      if (filter === 'active') {
+        if (item.status === 'completed') return false;
+        if (item.status === 'backlog' || !item.hasMetadata) return false;
+      }
+      if (filter === 'completed' && item.status !== 'completed') return false;
+      if (filter === 'backlog') {
+        if (item.status !== 'backlog' && item.hasMetadata) return false;
+      }
+      if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      return true;
+    }).length;
   }, [migrationItems, filter, searchTerm, displayOrder]);
+
+  const snapshotsTotalCount = useMemo(() => {
+    return snapshots.filter(snapshot => {
+      if (completedSearchTerm && !snapshot.techName.toLowerCase().includes(completedSearchTerm.toLowerCase())) return false;
+      return true;
+    }).length;
+  }, [snapshots, completedSearchTerm]);
 
   const handleSaveFields = async (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => {
     // Преобразуем recommendedAlternatives в формат для API (simple-array)
@@ -526,6 +599,53 @@ export const MigrationsPage: React.FC = () => {
     } catch (err: any) {
       console.error('Ошибка обновления метаданных:', err);
       throw err;
+    }
+  };
+
+  const handleCompleteMigration = async (item: MigrationItem) => {
+    if (!isAdminOrManager) return;
+
+    if (!window.confirm(`Завершить миграцию "${item.techName}"?\n\nМетаданные миграции будут перемещены в архив и удалены из активного списка.`)) {
+      return;
+    }
+
+    try {
+      await migrationSnapshotsApi.completeMigration(item.techRadarId, {
+        techName: item.techName,
+        versionBefore: item.currentVersion,
+        versionAfter: item.versionToUpdate || undefined,
+        deadline: item.versionUpdateDeadline || undefined,
+        upgradePath: item.upgradePath || undefined,
+        recommendedAlternatives: item.recommendedAlternatives || undefined,
+      });
+
+      // Удаляем из локального состояния
+      setMigrationItems(prev => prev.filter(i => i.techRadarId !== item.techRadarId));
+      alert('Миграция завершена и перемещена в архив');
+    } catch (err: any) {
+      console.error('Ошибка завершения миграции:', err);
+      alert('Ошибка завершения миграции: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleClearArchive = async () => {
+    if (clearConfirmText !== 'ТОЧНО УДАЛИТЬ') {
+      alert('Для подтверждения введите "ТОЧНО УДАЛИТЬ"');
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const result = await migrationSnapshotsApi.deleteAll();
+      setSnapshots([]);
+      setIsClearModalOpen(false);
+      setClearConfirmText('');
+      alert(`Архив очищен. Удалено ${result.deletedCount} записей.`);
+    } catch (err: any) {
+      console.error('Ошибка очистки архива:', err);
+      alert('Ошибка очистки архива: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -652,8 +772,34 @@ export const MigrationsPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Статистика */}
-        {stats && (
+        {/* Вкладки */}
+        <div className="mb-6">
+          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab('migrations')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'migrations'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              Активные миграции
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'completed'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              Завершенные ({snapshots.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Статистика - показываем только на вкладке миграций */}
+        {stats && activeTab === 'migrations' && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Всего</p>
@@ -680,88 +826,111 @@ export const MigrationsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Фильтры */}
-        <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 mb-6 transition-colors duration-200">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Все ({migrationItems.length})
-              </button>
-              <button
-                onClick={() => setFilter('active')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'active'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Активные ({migrationItems.filter(i => i.status !== 'completed' && i.status !== 'backlog' && i.hasMetadata).length})
-              </button>
-              <button
-                onClick={() => setFilter('backlog')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'backlog'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Бэклог ({migrationItems.filter(i => i.status === 'backlog' || !i.hasMetadata).length})
-              </button>
-              <button
-                onClick={() => setFilter('completed')}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'completed'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Выполнено ({migrationItems.filter(i => i.status === 'completed').length})
-              </button>
+        {/* Фильтры - только для вкладки активных миграций */}
+        {activeTab === 'migrations' && (
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 mb-6 transition-colors duration-200">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilter('all')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    filter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Все ({migrationItems.length})
+                </button>
+                <button
+                  onClick={() => setFilter('active')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    filter === 'active'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Активные ({migrationItems.filter(i => i.status !== 'completed' && i.status !== 'backlog' && i.hasMetadata).length})
+                </button>
+                <button
+                  onClick={() => setFilter('backlog')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    filter === 'backlog'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Бэклог ({migrationItems.filter(i => i.status === 'backlog' || !i.hasMetadata).length})
+                </button>
+                <button
+                  onClick={() => setFilter('completed')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    filter === 'completed'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Выполнено ({migrationItems.filter(i => i.status === 'completed').length})
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Поиск технологии..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Поиск технологии..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
           </div>
-        </div>
+        )}
 
-        {/* Таблица миграций */}
-        <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md overflow-hidden transition-colors duration-200">
-          <div className="p-4">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={filteredItems.map(i => i.metadataId)}
-                strategy={verticalListSortingStrategy}
+        {/* Поиск - только для вкладки завершенных */}
+        {activeTab === 'completed' && (
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 mb-6 transition-colors duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Поиск по архиву</h3>
+              <input
+                type="text"
+                placeholder="Поиск технологии..."
+                value={completedSearchTerm}
+                onChange={(e) => {
+                  setCompletedSearchTerm(e.target.value);
+                  setCompletedCurrentPage(1);
+                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Таблица миграций - показывается только на вкладке активных */}
+        {activeTab === 'migrations' && (
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md overflow-hidden transition-colors duration-200">
+            <div className="p-4">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <table className="w-full">
-                  <tbody>
-                    {filteredItems.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                          Нет данных для отображения
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredItems.map((item) => (
-                        <SortableRow
+                <SortableContext
+                  items={filteredItems.map(i => i.metadataId)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <table className="w-full">
+                    <tbody>
+                      {filteredItems.length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                            Нет данных для отображения
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredItems.map((item) => (
+                          <SortableRow
                           key={item.metadataId}
                           item={item}
                           isAdminOrManager={isAdminOrManager}
                           canDrag={item.hasMetadata && item.status !== 'backlog'}
+                          onCompleteMigration={handleCompleteMigration}
                           onUpdateStatus={(metadataId, techRadarId, hasMetadata, status) => handleUpdateMetadata(metadataId, techRadarId, hasMetadata, { status })}
                           onUpdateProgress={(metadataId, techRadarId, hasMetadata, progress) => handleUpdateMetadata(metadataId, techRadarId, hasMetadata, { progress })}
                           onSaveFields={handleSaveFields}
@@ -774,7 +943,191 @@ export const MigrationsPage: React.FC = () => {
               </SortableContext>
             </DndContext>
           </div>
+
+          {/* Пагинация для активных миграций */}
+          <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(activeMigrationsTotalCount / itemsPerPage)}
+              totalItems={activeMigrationsTotalCount}
+              itemsPerPage={itemsPerPage}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onItemsPerPageChange={(perPage) => {
+                setItemsPerPage(perPage);
+                setCurrentPage(1);
+              }}
+              showTotal
+              showQuickJumper
+            />
+          </div>
         </div>
+        )}
+
+        {/* Таблица завершенных миграций */}
+        {activeTab === 'completed' && (
+          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md overflow-hidden transition-colors duration-200 mt-6">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Архив завершенных миграций</h2>
+                {isAdminOrManager && snapshotsTotalCount > 0 && (
+                  <Button
+                    onClick={() => setIsClearModalOpen(true)}
+                    variant="danger"
+                    size="sm"
+                  >
+                    🗑 Очистить архив
+                  </Button>
+                )}
+              </div>
+              {snapshotsTotalCount === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">Нет завершенных миграций</p>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-800">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Технология</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Версия до</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Версия после</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Путь обновления</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Завершена</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSnapshots.map((snapshot) => (
+                      <tr
+                        key={snapshot.id}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{snapshot.techName}</span>
+                            {snapshot.recommendedAlternatives && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                Альтернативы: {snapshot.recommendedAlternatives}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono text-xs text-gray-700 dark:text-gray-300">
+                            {snapshot.versionBefore}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {snapshot.versionAfter ? (
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded font-mono text-xs text-green-700 dark:text-green-300">
+                              {snapshot.versionAfter}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {snapshot.upgradePath ? (
+                            <div className="text-sm text-gray-600 dark:text-gray-400 max-w-md truncate" title={snapshot.upgradePath}>
+                              {snapshot.upgradePath}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {new Date(snapshot.completedAt).toLocaleDateString('ru-RU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: '2-digit',
+                            })}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Пагинация для завершенных миграций */}
+            <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+              <Pagination
+                currentPage={completedCurrentPage}
+                totalPages={Math.ceil(snapshotsTotalCount / completedItemsPerPage)}
+                totalItems={snapshotsTotalCount}
+                itemsPerPage={completedItemsPerPage}
+                onPageChange={(page) => {
+                  setCompletedCurrentPage(page);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onItemsPerPageChange={(perPage) => {
+                  setCompletedItemsPerPage(perPage);
+                  setCompletedCurrentPage(1);
+                }}
+                showTotal
+                showQuickJumper
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно подтверждения очистки архива */}
+        <Modal
+          isOpen={isClearModalOpen}
+          onClose={() => {
+            setIsClearModalOpen(false);
+            setClearConfirmText('');
+          }}
+          title="Очистка архива завершенных миграций"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-700 dark:text-red-400 font-medium">
+                ⚠️ Внимание! Это действие необратимо удалит все завершенные миграции из архива.
+              </p>
+            </div>
+
+            <p className="text-gray-700 dark:text-gray-300">
+              Для подтверждения удаления введите текст ниже:
+            </p>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Введите "ТОЧНО УДАЛИТЬ"
+              </label>
+              <input
+                type="text"
+                value={clearConfirmText}
+                onChange={(e) => setClearConfirmText(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="ТОЧНО УДАЛИТЬ"
+                disabled={isClearing}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                onClick={handleClearArchive}
+                variant="danger"
+                disabled={clearConfirmText !== 'ТОЧНО УДАЛИТЬ' || isClearing}
+              >
+                {isClearing ? 'Удаление...' : 'Удалить все снапшоты'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsClearModalOpen(false);
+                  setClearConfirmText('');
+                }}
+                variant="secondary"
+                disabled={isClearing}
+              >
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   );

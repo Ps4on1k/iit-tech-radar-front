@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole, AIConfig, AIConfigGlobalSettings, MigrationMetadata, MigrationStatistics, MigrationStatus, MigrationMetadataView } from '../types';
+import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole, AIConfig, AIConfigGlobalSettings, MigrationMetadata, MigrationStatistics, MigrationStatus, MigrationMetadataView, MigrationSnapshot } from '../types';
 
 // Use relative path - nginx will proxy /api to backend
 const API_BASE_URL = '/api';
@@ -321,6 +321,50 @@ export const migrationMetadataApi = {
 
   getStatistics: async (): Promise<MigrationStatistics> => {
     const response = await api.get('/migration-metadata/statistics');
+    return response.data;
+  },
+};
+
+/**
+ * API для работы со снапшотами миграций
+ */
+export const migrationSnapshotsApi = {
+  getAll: async (): Promise<MigrationSnapshot[]> => {
+    const response = await api.get('/migration-snapshots');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<MigrationSnapshot> => {
+    const response = await api.get(`/migration-snapshots/${id}`);
+    return response.data;
+  },
+
+  completeMigration: async (
+    techRadarId: string,
+    data: {
+      techName: string;
+      versionBefore: string;
+      versionAfter?: string;
+      deadline?: string;
+      upgradePath?: string;
+      recommendedAlternatives?: string;
+    }
+  ): Promise<MigrationSnapshot> => {
+    const response = await api.post(`/migration-snapshots/complete/${techRadarId}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/migration-snapshots/${id}`);
+  },
+
+  deleteAll: async (): Promise<{ message: string; deletedCount: number }> => {
+    const response = await api.delete('/migration-snapshots/all');
+    return response.data;
+  },
+
+  getStatistics: async (): Promise<{ total: number; lastMonthCount: number; lastYearCount: number }> => {
+    const response = await api.get('/migration-snapshots/statistics');
     return response.data;
   },
 };

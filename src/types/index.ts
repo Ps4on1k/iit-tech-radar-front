@@ -138,6 +138,30 @@ export interface MigrationStatistics {
   backlogWithNoMetadata: number;
 }
 
+/**
+ * Снапшот завершенной миграции
+ */
+export interface MigrationSnapshot {
+  id: string;
+  techRadarId: string;
+  techName: string;
+  versionBefore: string;
+  versionAfter?: string;
+  deadline?: string;
+  upgradePath?: string;
+  recommendedAlternatives?: string;
+  priority: number;
+  progress: number;
+  completedAt: string;
+  completedBy?: string;
+}
+
+export interface MigrationSnapshotStatistics {
+  total: number;
+  lastMonthCount: number;
+  lastYearCount: number;
+}
+
 export interface SortState {
   sortBy?: keyof TechRadarEntity;
   sortOrder: 'asc' | 'desc';
