@@ -143,6 +143,12 @@ export const Navbar: React.FC = () => {
           >
             Дашборды
           </Link>
+          <Link
+            to="/migrations"
+            className={`text-sm ${isActive('/migrations') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-gray-300'} no-underline hover:underline transition-colors`}
+          >
+            Миграции
+          </Link>
           {auth.isAdmin && (
             <Link
               to="/import"

@@ -7,3 +7,4 @@ export { AuditLogPage } from './AuditLogPage';
 export { TechnologyViewPage } from './TechnologyViewPage';
 export { DashboardsPage } from './DashboardsPage';
 export { AIUpdatePage } from './AIUpdatePage';
+export { MigrationsPage } from './MigrationsPage';
