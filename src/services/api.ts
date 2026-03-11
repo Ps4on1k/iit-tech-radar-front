@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole, AIConfig, AIConfigGlobalSettings } from '../types';
+import type { TechRadarEntity, RadarStatistics, FilterState, SortState, User, UserRole, AIConfig, AIConfigGlobalSettings, MigrationMetadata, MigrationStatistics, MigrationStatus, MigrationMetadataView } from '../types';
 
 // Use relative path - nginx will proxy /api to backend
 const API_BASE_URL = '/api';
@@ -267,6 +267,57 @@ export const aiConfigApi = {
 
   updateGlobalSettings: async (settings: AIConfigGlobalSettings): Promise<AIConfigGlobalSettings> => {
     const response = await api.put('/ai-config/global-settings', settings);
+    return response.data;
+  },
+};
+
+export const migrationMetadataApi = {
+  getAll: async (includeCompleted: boolean = false): Promise<MigrationMetadataView[]> => {
+    const params = new URLSearchParams();
+    params.append('includeCompleted', includeCompleted.toString());
+    const response = await api.get(`/migration-metadata?${params.toString()}`);
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<MigrationMetadata> => {
+    const response = await api.get(`/migration-metadata/${id}`);
+    return response.data;
+  },
+
+  getByTechRadarId: async (techRadarId: string): Promise<MigrationMetadata | null> => {
+    const response = await api.get(`/migration-metadata/tech-radar/${techRadarId}`);
+    return response.data;
+  },
+
+  create: async (dto: { techRadarId: string; priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+    const response = await api.post('/migration-metadata', dto);
+    return response.data;
+  },
+
+  update: async (id: string, dto: { priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+    const response = await api.put(`/migration-metadata/${id}`, dto);
+    return response.data;
+  },
+
+  /**
+   * Обновить или создать метаданные по techRadarId (upsert)
+   */
+  updateWithTechRadarId: async (techRadarId: string, dto: { priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+    const response = await api.put(`/migration-metadata/upsert/${techRadarId}`, dto);
+    return response.data;
+  },
+
+  updatePriorities: async (items: Array<{ id: string; priority: number }>): Promise<MigrationMetadataView[]> => {
+    const response = await api.put('/migration-metadata/priorities', { items });
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/migration-metadata/${id}`);
+  },
+
+  getStatistics: async (): Promise<MigrationStatistics> => {
+    const response = await api.get('/migration-metadata/statistics');
     return response.data;
   },
 };

@@ -1,116 +1,519 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import type { TechRadarEntity } from '../types';
+import { techRadarApi, migrationMetadataApi } from '../services/api';
+import type { TechRadarEntity, MigrationMetadataView, MigrationStatus, MigrationStatistics } from '../types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-interface MigrationItem {
-  id: string;
-  name: string;
-  currentVersion: string;
-  upgradePath?: string;
-  versionToUpdate?: string;
-  versionUpdateDeadline?: string;
-  recommendedAlternatives?: string[];
-  category: string;
-  riskLevel: string;
-  owner: string;
+interface MigrationItem extends MigrationMetadataView {
+  techRadar?: TechRadarEntity;
 }
 
+interface SortableRowProps {
+  item: MigrationItem;
+  isAdminOrManager: boolean;
+  onUpdateStatus: (metadataId: string, techRadarId: string, hasMetadata: boolean, status: MigrationStatus) => Promise<void>;
+  onUpdateProgress: (metadataId: string, techRadarId: string, hasMetadata: boolean, progress: number) => Promise<void>;
+  onSaveFields: (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => Promise<void>;
+  getStatusColor: (status: MigrationStatus) => string;
+}
+
+const SortableRow: React.FC<SortableRowProps> = ({
+  item,
+  isAdminOrManager,
+  onUpdateStatus,
+  onUpdateProgress,
+  onSaveFields,
+  getStatusColor,
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editVersion, setEditVersion] = useState(item.versionToUpdate || '');
+  const [editDeadline, setEditDeadline] = useState(item.versionUpdateDeadline || '');
+  const [editUpgradePath, setEditUpgradePath] = useState(item.upgradePath || '');
+  const [editAlternatives, setEditAlternatives] = useState(item.recommendedAlternatives || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditVersion(item.versionToUpdate || '');
+      setEditDeadline(item.versionUpdateDeadline || '');
+      setEditUpgradePath(item.upgradePath || '');
+      setEditAlternatives(item.recommendedAlternatives || '');
+    }
+  }, [item, isEditing]);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.metadataId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string } = {};
+      
+      if (editVersion !== item.versionToUpdate) {
+        fields.versionToUpdate = editVersion;
+      }
+      if (editDeadline !== item.versionUpdateDeadline) {
+        fields.versionUpdateDeadline = editDeadline;
+      }
+      if (editUpgradePath !== item.upgradePath) {
+        fields.upgradePath = editUpgradePath;
+      }
+      if (editAlternatives !== item.recommendedAlternatives) {
+        fields.recommendedAlternatives = Array.isArray(editAlternatives) ? editAlternatives.join(',') : String(editAlternatives);
+      }
+      
+      if (Object.keys(fields).length > 0) {
+        await onSaveFields(item.techRadarId, fields);
+      }
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error('Ошибка сохранения:', err);
+      alert('Ошибка сохранения: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditVersion(item.versionToUpdate || '');
+    setEditDeadline(item.versionUpdateDeadline || '');
+    setEditUpgradePath(item.upgradePath || '');
+    setEditAlternatives(item.recommendedAlternatives || '');
+    setIsEditing(false);
+  };
+
+  const parseAlternatives = (str?: string) => {
+    if (!str) return [];
+    if (str.startsWith('[')) {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return [];
+      }
+    }
+    return str.split(',').map(s => s.trim()).filter(s => s);
+  };
+
+  const alternativesList = parseAlternatives(item.recommendedAlternatives);
+
+  const getStatusBadge = () => {
+    const badges: Record<MigrationStatus, { bg: string; text: string; icon: string; label: string }> = {
+      backlog: { bg: 'bg-gray-500', text: 'text-white', icon: '📋', label: 'Бэклог' },
+      planned: { bg: 'bg-blue-500', text: 'text-white', icon: '📅', label: 'Запланировано' },
+      in_progress: { bg: 'bg-yellow-500', text: 'text-white', icon: '⚙️', label: 'В работе' },
+      completed: { bg: 'bg-green-500', text: 'text-white', icon: '✅', label: 'Выполнено' },
+    };
+    const badge = badges[item.status];
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+        {badge.icon} {badge.label}
+      </span>
+    );
+  };
+
+  const handleProgressClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isAdminOrManager) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.round((x / rect.width) * 100);
+    const clampedPercentage = Math.min(100, Math.max(0, percentage));
+    await onUpdateProgress(item.metadataId, item.techRadarId, item.hasMetadata, clampedPercentage);
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-200 dark:border-gray-700 transition-colors group ${
+        isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-lg' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+      } ${!item.hasMetadata ? 'opacity-75' : ''}`}
+    >
+      <td className="px-4 py-3" colSpan={5}>
+        <div className="flex items-start gap-3">
+          {/* Drag handle */}
+          {isAdminOrManager && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="p-1 mt-1 cursor-grab hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+              title="Перетащить для изменения приоритета"
+            >
+              <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+              </svg>
+            </button>
+          )}
+
+          {/* Основная информация */}
+          <div className="flex-1 min-w-0">
+            {/* Заголовок с кнопкой редактирования */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{item.techName}</span>
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded font-mono text-xs text-gray-700 dark:text-gray-300">
+                  {item.currentVersion}
+                </span>
+                {!item.hasMetadata && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">(по умолчанию)</span>
+                )}
+              </div>
+              {isAdminOrManager && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-3 py-1.5 text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Редактировать
+                </button>
+              )}
+            </div>
+
+            {/* Режим просмотра */}
+            {!isEditing ? (
+              <div className="space-y-2">
+                {/* Версия и дедлайн */}
+                <div className="flex items-center gap-4 text-sm">
+                  {item.versionToUpdate && (
+                    <span className="text-orange-600 dark:text-orange-400 font-medium">
+                      Обновить до: {item.versionToUpdate}
+                    </span>
+                  )}
+                  {item.versionUpdateDeadline && (
+                    <span className={`text-xs ${
+                      new Date(item.versionUpdateDeadline) < new Date()
+                        ? 'text-red-600 dark:text-red-400 font-semibold'
+                        : 'text-gray-500 dark:text-gray-500'
+                    }`}>
+                      до {new Date(item.versionUpdateDeadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+
+                {/* Путь обновления */}
+                {item.upgradePath && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded">
+                    <span className="font-medium">📋 Путь:</span> {item.upgradePath}
+                  </div>
+                )}
+
+                {/* Альтернативы */}
+                {alternativesList.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 self-center">Альтернативы:</span>
+                    {alternativesList.map((alt: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded"
+                      >
+                        {alt}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Статус */}
+                <div className="mt-3">
+                  {getStatusBadge()}
+                </div>
+              </div>
+            ) : (
+              /* Режим редактирования */
+              <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Версия для обновления
+                    </label>
+                    <input
+                      type="text"
+                      value={editVersion}
+                      onChange={(e) => setEditVersion(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                      placeholder="Например: 2.0.0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Дедлайн
+                    </label>
+                    <input
+                      type="date"
+                      value={editDeadline}
+                      onChange={(e) => setEditDeadline(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Путь обновления
+                  </label>
+                  <textarea
+                    value={editUpgradePath}
+                    onChange={(e) => setEditUpgradePath(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Опишите шаги миграции..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Альтернативы (через запятую)
+                  </label>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const parsed = parseAlternatives(editAlternatives);
+                      return parsed.length > 0 ? parsed.join(', ') : editAlternatives;
+                    })()}
+                    onChange={(e) => setEditAlternatives(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    placeholder="React, Vue, Angular"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Статус
+                  </label>
+                  <select
+                    value={item.status}
+                    onChange={(e) => onUpdateStatus(item.metadataId, item.techRadarId, item.hasMetadata, e.target.value as MigrationStatus)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border-0 ${getStatusColor(item.status)}`}
+                  >
+                    <option value="backlog">Бэклог</option>
+                    <option value="planned">Запланировано</option>
+                    <option value="in_progress">В работе</option>
+                    <option value="completed">Выполнено</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? '✓ Сохранение...' : '✓ Сохранить'}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ✕ Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar на всю ширину строки */}
+        <div className="mt-4 w-full">
+          <div className="relative pt-1">
+            <div className="flex mb-2 items-center justify-between">
+              <div className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-600 dark:text-gray-400">
+                Прогресс миграции
+                {isAdminOrManager && (
+                  <span className="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">(кликните для изменения)</span>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-semibold inline-block text-gray-600 dark:text-gray-400">
+                  {item.progress}%
+                </span>
+              </div>
+            </div>
+            <div
+              onClick={handleProgressClick}
+              className={`overflow-hidden h-3 mb-4 text-xs flex rounded bg-gray-200 dark:bg-gray-700 ${
+                isAdminOrManager ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
+              }`}
+              title={isAdminOrManager ? 'Кликните для изменения прогресса' : ''}
+            >
+              <div
+                style={{ width: `${item.progress}%` }}
+                className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all ${
+                  item.progress < 50 ? 'bg-yellow-500' : item.progress < 100 ? 'bg-blue-500' : 'bg-green-500'
+                }`}
+              />
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
 export const MigrationsPage: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const [technologies, setTechnologies] = useState<TechRadarEntity[]>([]);
+  const { isAuthenticated, isAdminOrManager } = useAuth();
+  const [migrationItems, setMigrationItems] = useState<MigrationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'needs-update' | 'has-alternatives'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState<MigrationStatistics | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const fetchTechnologies = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/tech-radar');
-        setTechnologies(response.data);
+        const [metadataResponse, statsResponse] = await Promise.all([
+          migrationMetadataApi.getAll(true),
+          migrationMetadataApi.getStatistics(),
+        ]);
+        setMigrationItems(metadataResponse);
+        setStats(statsResponse);
       } catch (err: any) {
-        console.error('Ошибка загрузки технологий:', err);
+        console.error('Ошибка загрузки данных:', err);
         setError(err.response?.data?.message || 'Ошибка загрузки данных');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTechnologies();
+    fetchData();
   }, [isAuthenticated]);
-
-  const migrationItems: MigrationItem[] = useMemo(() => {
-    return technologies
-      .filter(tech => 
-        tech.versionToUpdate || 
-        tech.upgradePath || 
-        (tech.recommendedAlternatives && tech.recommendedAlternatives.length > 0)
-      )
-      .map(tech => ({
-        id: tech.id,
-        name: tech.name,
-        currentVersion: tech.version,
-        upgradePath: tech.upgradePath,
-        versionToUpdate: tech.versionToUpdate,
-        versionUpdateDeadline: tech.versionUpdateDeadline,
-        recommendedAlternatives: tech.recommendedAlternatives,
-        category: tech.category,
-        riskLevel: tech.riskLevel,
-        owner: tech.owner,
-      }));
-  }, [technologies]);
 
   const filteredItems = useMemo(() => {
     return migrationItems.filter(item => {
-      // Фильтр по типу миграции
-      if (filter === 'needs-update' && !item.versionToUpdate) return false;
-      if (filter === 'has-alternatives' && (!item.recommendedAlternatives || item.recommendedAlternatives.length === 0)) return false;
-
-      // Поиск по названию
-      if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-
+      if (filter === 'active' && item.status === 'completed') return false;
+      if (filter === 'completed' && item.status !== 'completed') return false;
+      if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
   }, [migrationItems, filter, searchTerm]);
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      adopt: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300',
-      trial: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
-      assess: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300',
-      hold: 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300',
-      drop: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300',
-    };
-    return colors[category] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+  const handleSaveFields = async (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => {
+    // Преобразуем recommendedAlternatives в формат для API (simple-array)
+    const updateFields: any = { ...fields };
+    if (updateFields.recommendedAlternatives !== undefined) {
+      updateFields.recommendedAlternatives = String(updateFields.recommendedAlternatives);
+    }
+    
+    await techRadarApi.update(techRadarId, updateFields);
+    setMigrationItems((prev: MigrationItem[]) => prev.map((item: MigrationItem) => 
+      item.techRadarId === techRadarId ? { ...item, ...fields } : item
+    ));
   };
 
-  const getRiskColor = (risk: string) => {
+  const handleUpdateMetadata = async (
+    metadataId: string,
+    techRadarId: string,
+    hasMetadata: boolean,
+    dto: { priority?: number; status?: MigrationStatus; progress?: number }
+  ) => {
+    try {
+      if (!hasMetadata) {
+        // Для записей без метаданных используем upsert (backend создаст новую запись)
+        const response = await migrationMetadataApi.updateWithTechRadarId(techRadarId, dto);
+        // Обновляем локальное состояние
+        setMigrationItems(prev => prev.map(item =>
+          item.techRadarId === techRadarId
+            ? { ...item, ...dto, hasMetadata: true, metadataId: response.id }
+            : item
+        ));
+      } else {
+        // Обновляем существующую запись
+        await migrationMetadataApi.update(metadataId, dto);
+        setMigrationItems(prev => prev.map(item =>
+          item.metadataId === metadataId ? { ...item, ...dto } : item
+        ));
+      }
+    } catch (err: any) {
+      console.error('Ошибка обновления метаданных:', err);
+      throw err;
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!isAdminOrManager) return;
+
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = filteredItems.findIndex(item => item.metadataId === active.id);
+      const newIndex = filteredItems.findIndex(item => item.metadataId === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newItems = arrayMove(filteredItems, oldIndex, newIndex);
+
+        const priorities = newItems
+          .filter(item => item.hasMetadata)
+          .map((item, index) => ({
+            id: item.metadataId,
+            priority: index,
+          }));
+
+        if (priorities.length > 0) {
+          try {
+            await migrationMetadataApi.updatePriorities(priorities);
+            setMigrationItems(prev => prev.map(item => {
+              const updated = priorities.find(p => p.id === item.metadataId);
+              return updated ? { ...item, priority: updated.priority } : item;
+            }));
+          } catch (err: any) {
+            console.error('Ошибка обновления приоритетов:', err);
+          }
+        }
+      }
+    }
+  };
+
+  const getStatusColor = (status: MigrationStatus) => {
     const colors: Record<string, string> = {
-      low: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300',
-      medium: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300',
-      high: 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300',
-      critical: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300',
+      backlog: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+      planned: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+      in_progress: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300',
+      completed: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300',
     };
-    return colors[risk] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+    return colors[status] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
   };
 
   if (!isAuthenticated) {
@@ -158,34 +561,39 @@ export const MigrationsPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Миграции</h1>
           <p className="text-gray-600 dark:text-gray-400">
             План миграции и обновления технологий
+            {isAdminOrManager && (
+              <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                (перетаскивайте для изменения приоритета)
+              </span>
+            )}
           </p>
         </div>
 
         {/* Статистика */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Всего миграций</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{migrationItems.length}</p>
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Всего</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
+            </div>
+            <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">В работе</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.byStatus.in_progress || 0}</p>
+            </div>
+            <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Запланировано</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.byStatus.planned || 0}</p>
+            </div>
+            <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Бэклог</p>
+              <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.byStatus.backlog || 0}</p>
+            </div>
+            <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Выполнено</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completedCount}</p>
+            </div>
           </div>
-          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Требуют обновления</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-              {migrationItems.filter(i => i.versionToUpdate).length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Есть альтернативы</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {migrationItems.filter(i => i.recommendedAlternatives && i.recommendedAlternatives.length > 0).length}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 transition-colors duration-200">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">С дедлайном</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {migrationItems.filter(i => i.versionUpdateDeadline).length}
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Фильтры */}
         <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md p-4 mb-6 transition-colors duration-200">
@@ -202,24 +610,24 @@ export const MigrationsPage: React.FC = () => {
                 Все ({migrationItems.length})
               </button>
               <button
-                onClick={() => setFilter('needs-update')}
+                onClick={() => setFilter('active')}
                 className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'needs-update'
+                  filter === 'active'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Требуют обновления ({migrationItems.filter(i => i.versionToUpdate).length})
+                Активные ({migrationItems.filter(i => i.status !== 'completed').length})
               </button>
               <button
-                onClick={() => setFilter('has-alternatives')}
+                onClick={() => setFilter('completed')}
                 className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  filter === 'has-alternatives'
+                  filter === 'completed'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                Есть альтернативы ({migrationItems.filter(i => i.recommendedAlternatives && i.recommendedAlternatives.length > 0).length})
+                Выполнено ({migrationItems.filter(i => i.status === 'completed').length})
               </button>
             </div>
             <input
@@ -234,112 +642,41 @@ export const MigrationsPage: React.FC = () => {
 
         {/* Таблица миграций */}
         <div className="bg-white dark:bg-[#16213e] rounded-lg shadow-md overflow-hidden transition-colors duration-200">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] border-collapse">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    Технология
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    Текущая версия
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    План миграции
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    Категория
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    Риск
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                    Владелец
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                      Нет данных для отображения
-                    </td>
-                  </tr>
-                ) : (
-                  filteredItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{item.name}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono text-sm text-gray-900 dark:text-gray-100">
-                          {item.currentVersion}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-2">
-                          {/* Версия для обновления */}
-                          {item.versionToUpdate && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
-                                Обновить до: {item.versionToUpdate}
-                              </span>
-                              {item.versionUpdateDeadline && (
-                                <span className={`text-xs ${
-                                  new Date(item.versionUpdateDeadline) < new Date()
-                                    ? 'text-red-600 dark:text-red-400 font-semibold'
-                                    : 'text-gray-500 dark:text-gray-500'
-                                }`}>
-                                  (до {new Date(item.versionUpdateDeadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })})
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Путь обновления */}
-                          {item.upgradePath && (
-                            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
-                              📋 {item.upgradePath}
-                            </div>
-                          )}
-                          
-                          {/* Альтернативы */}
-                          {item.recommendedAlternatives && item.recommendedAlternatives.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">Альтернативы:</span>
-                              {item.recommendedAlternatives.map((alt, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded"
-                                >
-                                  {alt}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getCategoryColor(item.category)}`}>
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getRiskColor(item.riskLevel)}`}>
-                          {item.riskLevel}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                        {item.owner}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="p-4">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={filteredItems.map(i => i.metadataId)}
+                strategy={verticalListSortingStrategy}
+              >
+                <table className="w-full">
+                  <tbody>
+                    {filteredItems.length === 0 ? (
+                      <tr>
+                        <td className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                          Нет данных для отображения
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredItems.map((item) => (
+                        <SortableRow
+                          key={item.metadataId}
+                          item={item}
+                          isAdminOrManager={isAdminOrManager}
+                          onUpdateStatus={(metadataId, techRadarId, hasMetadata, status) => handleUpdateMetadata(metadataId, techRadarId, hasMetadata, { status })}
+                          onUpdateProgress={(metadataId, techRadarId, hasMetadata, progress) => handleUpdateMetadata(metadataId, techRadarId, hasMetadata, { progress })}
+                          onSaveFields={handleSaveFields}
+                          getStatusColor={getStatusColor}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
       </div>

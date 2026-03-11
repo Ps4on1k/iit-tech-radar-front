@@ -98,6 +98,45 @@ export interface FilterState {
   search?: string;
 }
 
+export type MigrationStatus = 'backlog' | 'planned' | 'in_progress' | 'completed';
+
+export interface MigrationMetadata {
+  id: string;
+  techRadarId: string;
+  priority: number;
+  status: MigrationStatus;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Объединенные данные миграции (из VIEW)
+ */
+export interface MigrationMetadataView {
+  techRadarId: string;
+  techName: string;
+  currentVersion: string;
+  versionToUpdate?: string;
+  versionUpdateDeadline?: string;
+  upgradePath?: string;
+  recommendedAlternatives?: string;
+  metadataId: string;
+  priority: number;
+  status: MigrationStatus;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+  hasMetadata: boolean;
+}
+
+export interface MigrationStatistics {
+  total: number;
+  byStatus: Record<string, number>;
+  averageProgress: number;
+  completedCount: number;
+}
+
 export interface SortState {
   sortBy?: keyof TechRadarEntity;
   sortOrder: 'asc' | 'desc';
