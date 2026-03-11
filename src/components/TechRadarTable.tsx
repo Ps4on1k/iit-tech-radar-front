@@ -15,12 +15,13 @@ interface TechRadarTableProps {
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'name', label: 'Название', visible: true },
   { key: 'version', label: 'Версия', visible: true },
+  { key: 'security', label: 'ИБ', visible: true },
   { key: 'versionUpdateDeadline', label: 'Обновление', visible: true },
   { key: 'category', label: 'Категория', visible: true },
   { key: 'riskLevel', label: 'Риск', visible: true },
+  { key: 'license', label: 'Лицензия', visible: true },
   { key: 'type', label: 'Тип', visible: true },
   { key: 'subtype', label: 'Подтип', visible: true },
-  { key: 'license', label: 'Лицензия', visible: true },
   { key: 'owner', label: 'Владелец', visible: true },
 ];
 
@@ -39,7 +40,7 @@ const RISK_COLORS: Record<string, string> = {
   critical: '#FF4444',
 };
 
-type SortField = 'name' | 'version' | 'category' | 'riskLevel' | 'type' | 'subtype' | 'license' | 'owner' | 'versionUpdateDeadline';
+type SortField = 'name' | 'version' | 'category' | 'riskLevel' | 'license' | 'type' | 'subtype' | 'owner' | 'versionUpdateDeadline';
 type SortOrder = 'asc' | 'desc';
 
 export const TechRadarTable: React.FC<TechRadarTableProps> = ({ 
@@ -56,11 +57,12 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
   const [filters, setFilters] = useState({
     name: '',
     version: '',
+    security: '',
     category: '',
     riskLevel: '',
+    license: '',
     type: '',
     subtype: '',
-    license: '',
     owner: '',
   });
   // Сортировка по умолчанию: по дате обновления (чем ближе дата, тем выше)
@@ -88,13 +90,16 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
     return data.filter(entity => {
       const nameMatch = entity.name.toLowerCase().includes(filters.name.toLowerCase());
       const versionMatch = entity.version.toLowerCase().includes(filters.version.toLowerCase());
+      const securityMatch = !filters.security || 
+        (filters.security === 'has-vulnerabilities' && entity.securityVulnerabilities && entity.securityVulnerabilities.length > 0) ||
+        (filters.security === 'no-vulnerabilities' && (!entity.securityVulnerabilities || entity.securityVulnerabilities.length === 0));
       const categoryMatch = !filters.category || entity.category === filters.category;
       const riskMatch = !filters.riskLevel || entity.riskLevel === filters.riskLevel;
+      const licenseMatch = !filters.license || entity.license.toLowerCase().includes(filters.license.toLowerCase());
       const typeMatch = !filters.type || entity.type === filters.type;
       const subtypeMatch = !filters.subtype || entity.subtype === filters.subtype;
-      const licenseMatch = !filters.license || entity.license.toLowerCase().includes(filters.license.toLowerCase());
       const ownerMatch = entity.owner.toLowerCase().includes(filters.owner.toLowerCase());
-      return nameMatch && versionMatch && categoryMatch && riskMatch && typeMatch && subtypeMatch && licenseMatch && ownerMatch;
+      return nameMatch && versionMatch && securityMatch && categoryMatch && riskMatch && licenseMatch && typeMatch && subtypeMatch && ownerMatch;
     });
   }, [data, filters]);
 
@@ -138,7 +143,7 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
   const uniqueRisks = useMemo(() => Array.from(new Set(data.map(d => d.riskLevel))), [data]);
 
   const clearFilters = () => {
-    setFilters({ name: '', version: '', category: '', riskLevel: '', type: '', subtype: '', license: '', owner: '' });
+    setFilters({ name: '', version: '', security: '', category: '', riskLevel: '', license: '', type: '', subtype: '', owner: '' });
     setPage(1);
     if (onRadarFilter) {
       onRadarFilter(undefined, undefined);
@@ -207,7 +212,7 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
 
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         {/* Фильтры в порядке колонок */}
-        <div className="grid grid-cols-8 gap-2 mb-3">
+        <div className="grid grid-cols-9 gap-2 mb-3">
           <input
             type="text"
             placeholder="Название..."
@@ -222,6 +227,15 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
             onChange={(e) => { setFilters({ ...filters, version: e.target.value }); setPage(1); }}
             className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+          <select
+            value={filters.security}
+            onChange={(e) => { setFilters({ ...filters, security: e.target.value }); setPage(1); }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Все ИБ</option>
+            <option value="has-vulnerabilities">Есть уязвимости</option>
+            <option value="no-vulnerabilities">Нет уязвимостей</option>
+          </select>
           <select
             value={filters.category}
             onChange={(e) => { setFilters({ ...filters, category: e.target.value }); setPage(1); }}
@@ -238,6 +252,13 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
             <option value="">Все риски</option>
             {uniqueRisks.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
+          <input
+            type="text"
+            placeholder="Лицензия..."
+            value={filters.license}
+            onChange={(e) => { setFilters({ ...filters, license: e.target.value }); setPage(1); }}
+            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
           <select
             value={filters.type}
             onChange={(e) => { setFilters({ ...filters, type: e.target.value }); setPage(1); }}
@@ -254,13 +275,6 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
             <option value="">Все подтипы</option>
             {uniqueSubtypes.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <input
-            type="text"
-            placeholder="Лицензия..."
-            value={filters.license}
-            onChange={(e) => { setFilters({ ...filters, license: e.target.value }); setPage(1); }}
-            className="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
           <input
             type="text"
             placeholder="Владелец..."
@@ -292,6 +306,9 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
               <th onClick={() => handleSort('version')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Версия <SortIcon field="version" />
               </th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap">
+                ИБ
+              </th>
               <th onClick={() => handleSort('versionUpdateDeadline')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Обновление <SortIcon field="versionUpdateDeadline" />
               </th>
@@ -301,14 +318,14 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
               <th onClick={() => handleSort('riskLevel')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Риск <SortIcon field="riskLevel" />
               </th>
+              <th onClick={() => handleSort('license')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                Лицензия <SortIcon field="license" />
+              </th>
               <th onClick={() => handleSort('type')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Тип <SortIcon field="type" />
               </th>
               <th onClick={() => handleSort('subtype')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Подтип <SortIcon field="subtype" />
-              </th>
-              <th onClick={() => handleSort('license')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                Лицензия <SortIcon field="license" />
               </th>
               <th onClick={() => handleSort('owner')} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 Владелец <SortIcon field="owner" />
@@ -352,6 +369,17 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
                 <td className="px-3 py-2.5 text-xs">
                   <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-gray-900 dark:text-gray-100">{entity.version}</span>
                 </td>
+                <td className="px-3 py-2.5 text-xs text-center">
+                  {entity.securityVulnerabilities && entity.securityVulnerabilities.length > 0 ? (
+                    <div className="flex items-center justify-center gap-1" title={`Уязвимости: ${entity.securityVulnerabilities.join(', ')}`}>
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-600">—</span>
+                  )}
+                </td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">
                   {entity.versionUpdateDeadline ? (
                     <div className="flex flex-col gap-0.5">
@@ -359,8 +387,8 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
                         <span className="font-medium text-red-600 dark:text-red-400">{entity.versionToUpdate}</span>
                       )}
                       <span className={`text-[10px] ${
-                        new Date(entity.versionUpdateDeadline) < new Date() 
-                          ? 'text-red-600 dark:text-red-400 font-semibold' 
+                        new Date(entity.versionUpdateDeadline) < new Date()
+                          ? 'text-red-600 dark:text-red-400 font-semibold'
                           : 'text-gray-500 dark:text-gray-500'
                       }`}>
                         до {new Date(entity.versionUpdateDeadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}
@@ -382,9 +410,9 @@ export const TechRadarTable: React.FC<TechRadarTableProps> = ({
                     {entity.riskLevel}
                   </span>
                 </td>
+                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.license}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.type}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.subtype || '—'}</td>
-                <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.license}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{entity.owner}</td>
               </tr>
               );
