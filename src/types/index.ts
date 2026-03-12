@@ -67,6 +67,10 @@ export interface User {
   isActive: boolean;
 }
 
+export interface UserWithFullName extends User {
+  fullName: string;
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;
@@ -106,6 +110,7 @@ export interface MigrationMetadata {
   priority: number;
   status: MigrationStatus;
   progress: number;
+  ownerId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +130,8 @@ export interface MigrationMetadataView {
   priority: number;
   status: MigrationStatus;
   progress: number;
+  ownerId?: string;
+  ownerName?: string;
   createdAt: string;
   updatedAt: string;
   hasMetadata: boolean;
@@ -152,6 +159,8 @@ export interface MigrationSnapshot {
   recommendedAlternatives?: string;
   priority: number;
   progress: number;
+  ownerId?: string;
+  ownerName?: string;
   completedAt: string;
   completedBy?: string;
 }

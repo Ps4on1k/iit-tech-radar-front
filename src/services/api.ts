@@ -139,6 +139,20 @@ export const authApi = {
     return response.data;
   },
 
+  /**
+   * Получить всех активных пользователей с полным именем
+   */
+  getActiveUsersWithFullName: async (): Promise<Array<{ id: string; email: string; firstName: string; lastName: string; fullName: string }>> => {
+    const response = await api.get('/auth/users');
+    const users: User[] = response.data;
+    return users
+      .filter(u => u.isActive)
+      .map(u => ({
+        ...u,
+        fullName: `${u.firstName} ${u.lastName}`.trim() || u.email,
+      }));
+  },
+
   createUser: async (userData: { email: string; password: string; firstName: string; lastName: string; role: UserRole }) => {
     const response = await api.post('/auth/users', userData);
     return response.data;
@@ -289,12 +303,12 @@ export const migrationMetadataApi = {
     return response.data;
   },
 
-  create: async (dto: { techRadarId: string; priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+  create: async (dto: { techRadarId: string; priority?: number; status?: MigrationStatus; progress?: number; ownerId?: string }): Promise<MigrationMetadata> => {
     const response = await api.post('/migration-metadata', dto);
     return response.data;
   },
 
-  update: async (id: string, dto: { priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+  update: async (id: string, dto: { priority?: number; status?: MigrationStatus; progress?: number; ownerId?: string }): Promise<MigrationMetadata> => {
     const response = await api.put(`/migration-metadata/${id}`, dto);
     return response.data;
   },
@@ -302,7 +316,7 @@ export const migrationMetadataApi = {
   /**
    * Обновить или создать метаданные по techRadarId (upsert)
    */
-  updateWithTechRadarId: async (techRadarId: string, dto: { priority?: number; status?: MigrationStatus; progress?: number }): Promise<MigrationMetadata> => {
+  updateWithTechRadarId: async (techRadarId: string, dto: { priority?: number; status?: MigrationStatus; progress?: number; ownerId?: string }): Promise<MigrationMetadata> => {
     const response = await api.put(`/migration-metadata/upsert/${techRadarId}`, dto);
     return response.data;
   },

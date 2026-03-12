@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { techRadarApi, migrationMetadataApi, migrationSnapshotsApi } from '../services/api';
+import { techRadarApi, migrationMetadataApi, migrationSnapshotsApi, authApi } from '../services/api';
 import type { TechRadarEntity, MigrationMetadataView, MigrationStatus, MigrationStatistics, MigrationSnapshot } from '../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -33,10 +33,11 @@ interface SortableRowProps {
   isAdminOrManager: boolean;
   onUpdateStatus: (metadataId: string, techRadarId: string, hasMetadata: boolean, status: MigrationStatus) => Promise<void>;
   onUpdateProgress: (metadataId: string, techRadarId: string, hasMetadata: boolean, progress: number) => Promise<void>;
-  onSaveFields: (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => Promise<void>;
+  onSaveFields: (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string; ownerId?: string }) => Promise<void>;
   getStatusColor: (status: MigrationStatus) => string;
   canDrag: boolean;
   onCompleteMigration: (item: MigrationItem) => Promise<void>;
+  users: Array<{ id: string; email: string; firstName: string; lastName: string; fullName: string }>;
 }
 
 const SortableRow: React.FC<SortableRowProps> = ({
@@ -48,12 +49,14 @@ const SortableRow: React.FC<SortableRowProps> = ({
   getStatusColor,
   canDrag,
   onCompleteMigration,
+  users,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editVersion, setEditVersion] = useState(item.versionToUpdate || '');
   const [editDeadline, setEditDeadline] = useState(item.versionUpdateDeadline || '');
   const [editUpgradePath, setEditUpgradePath] = useState(item.upgradePath || '');
   const [editAlternatives, setEditAlternatives] = useState(item.recommendedAlternatives || '');
+  const [editOwnerId, setEditOwnerId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -62,6 +65,7 @@ const SortableRow: React.FC<SortableRowProps> = ({
       setEditDeadline(item.versionUpdateDeadline || '');
       setEditUpgradePath(item.upgradePath || '');
       setEditAlternatives(item.recommendedAlternatives || '');
+      setEditOwnerId(item.ownerId || '');
     }
   }, [item, isEditing]);
 
@@ -83,8 +87,8 @@ const SortableRow: React.FC<SortableRowProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string } = {};
-      
+      const fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string; ownerId?: string } = {};
+
       if (editVersion !== item.versionToUpdate) {
         fields.versionToUpdate = editVersion;
       }
@@ -97,7 +101,10 @@ const SortableRow: React.FC<SortableRowProps> = ({
       if (editAlternatives !== item.recommendedAlternatives) {
         fields.recommendedAlternatives = Array.isArray(editAlternatives) ? editAlternatives.join(',') : String(editAlternatives);
       }
-      
+      if (editOwnerId !== (item.ownerId || '')) {
+        fields.ownerId = editOwnerId || undefined;
+      }
+
       if (Object.keys(fields).length > 0) {
         await onSaveFields(item.techRadarId, fields);
       }
@@ -115,6 +122,7 @@ const SortableRow: React.FC<SortableRowProps> = ({
     setEditDeadline(item.versionUpdateDeadline || '');
     setEditUpgradePath(item.upgradePath || '');
     setEditAlternatives(item.recommendedAlternatives || '');
+    setEditOwnerId(item.ownerId || '');
     setIsEditing(false);
   };
 
@@ -210,7 +218,7 @@ const SortableRow: React.FC<SortableRowProps> = ({
             {!isEditing ? (
               <div className="space-y-2">
                 {/* Версия и дедлайн */}
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-4 text-sm flex-wrap">
                   {item.versionToUpdate && (
                     <span className="text-orange-600 dark:text-orange-400 font-medium">
                       Обновить до: {item.versionToUpdate}
@@ -223,6 +231,14 @@ const SortableRow: React.FC<SortableRowProps> = ({
                         : 'text-gray-500 dark:text-gray-500'
                     }`}>
                       до {new Date(item.versionUpdateDeadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </span>
+                  )}
+                  {item.ownerName && (
+                    <span className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      {item.ownerName}
                     </span>
                   )}
                 </div>
@@ -321,6 +337,24 @@ const SortableRow: React.FC<SortableRowProps> = ({
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Владелец миграции
+                  </label>
+                  <select
+                    value={editOwnerId}
+                    onChange={(e) => setEditOwnerId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Не назначен</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.fullName} ({user.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="pt-2">
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                     Статус
@@ -396,12 +430,13 @@ const SortableRow: React.FC<SortableRowProps> = ({
 };
 
 export const MigrationsPage: React.FC = () => {
-  const { isAuthenticated, isAdminOrManager } = useAuth();
+  const { isAuthenticated, isAdminOrManager, user } = useAuth();
   const [migrationItems, setMigrationItems] = useState<MigrationItem[]>([]);
   const [snapshots, setSnapshots] = useState<MigrationSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'backlog' | 'completed'>('all');
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine' | string>('all'); // 'all', 'mine', или UUID владельца
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState<MigrationStatistics | null>(null);
   const [displayOrder, setDisplayOrder] = useState<string[]>([]);
@@ -411,6 +446,9 @@ export const MigrationsPage: React.FC = () => {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState('');
   const [isClearing, setIsClearing] = useState(false);
+
+  // Пользователи для выбора владельца
+  const [users, setUsers] = useState<Array<{ id: string; email: string; firstName: string; lastName: string; fullName: string }>>([]);
 
   // Пагинация для активных миграций
   const [currentPage, setCurrentPage] = useState(1);
@@ -438,14 +476,16 @@ export const MigrationsPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [metadataResponse, statsResponse, snapshotsResponse] = await Promise.all([
+        const [metadataResponse, statsResponse, snapshotsResponse, usersResponse] = await Promise.all([
           migrationMetadataApi.getAll(true),
           migrationMetadataApi.getStatistics(),
           migrationSnapshotsApi.getAll(),
+          authApi.getActiveUsersWithFullName(),
         ]);
         setMigrationItems(metadataResponse);
         setStats(statsResponse);
         setSnapshots(snapshotsResponse);
+        setUsers(usersResponse);
         // Инициализируем порядок отображения: сначала активные (не бэклог), потом бэклог
         const sorted = [...metadataResponse].sort((a, b) => {
           // Активные элементы (не бэклог) выше бэклога
@@ -479,6 +519,7 @@ export const MigrationsPage: React.FC = () => {
   // Отфильтрованные элементы (без пагинации) - для SortableContext
   const filteredItemsNoPagination = useMemo(() => {
     const items = migrationItems.filter(item => {
+      // Фильтр по статусу
       if (filter === 'active') {
         if (item.status === 'completed') return false;
         if (item.status === 'backlog' || !item.hasMetadata) return false;
@@ -487,7 +528,19 @@ export const MigrationsPage: React.FC = () => {
       if (filter === 'backlog') {
         if (item.status !== 'backlog' && item.hasMetadata) return false;
       }
+      
+      // Фильтр по поиску
       if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      
+      // Фильтр по владельцу
+      if (ownerFilter === 'mine' && user) {
+        // Показывать только миграции где пользователь является владельцем
+        if (item.ownerId !== user.id) return false;
+      } else if (ownerFilter !== 'all' && ownerFilter !== 'mine') {
+        // Показывать только миграции выбранного владельца
+        if (item.ownerId !== ownerFilter) return false;
+      }
+      
       return true;
     });
 
@@ -497,7 +550,7 @@ export const MigrationsPage: React.FC = () => {
       const bIndex = orderMap.get(b.metadataId) ?? 999999;
       return aIndex - bIndex;
     });
-  }, [migrationItems, filter, searchTerm, displayOrder]);
+  }, [migrationItems, filter, searchTerm, ownerFilter, displayOrder, user]);
 
   // Элементы для отображения (с пагинацией)
   const filteredItems = useMemo(() => {
@@ -531,9 +584,17 @@ export const MigrationsPage: React.FC = () => {
         if (item.status !== 'backlog' && item.hasMetadata) return false;
       }
       if (searchTerm && !item.techName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      
+      // Фильтр по владельцу
+      if (ownerFilter === 'mine' && user) {
+        if (item.ownerId !== user.id) return false;
+      } else if (ownerFilter !== 'all' && ownerFilter !== 'mine') {
+        if (item.ownerId !== ownerFilter) return false;
+      }
+      
       return true;
     }).length;
-  }, [migrationItems, filter, searchTerm, displayOrder]);
+  }, [migrationItems, filter, searchTerm, ownerFilter, user]);
 
   const snapshotsTotalCount = useMemo(() => {
     return snapshots.filter(snapshot => {
@@ -542,36 +603,63 @@ export const MigrationsPage: React.FC = () => {
     }).length;
   }, [snapshots, completedSearchTerm]);
 
-  const handleSaveFields = async (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string }) => {
-    // Преобразуем recommendedAlternatives в формат для API (simple-array)
-    const updateFields: any = { ...fields };
-    if (updateFields.recommendedAlternatives !== undefined) {
-      updateFields.recommendedAlternatives = String(updateFields.recommendedAlternatives);
+  const handleSaveFields = async (techRadarId: string, fields: { versionToUpdate?: string; versionUpdateDeadline?: string; upgradePath?: string; recommendedAlternatives?: string; ownerId?: string }) => {
+    // Передаем в techRadarApi только поля, которые есть в tech_radar
+    // Пустые строки преобразуем в null для nullable полей
+    const techRadarUpdateFields: any = {};
+
+    if (fields.versionToUpdate !== undefined) {
+      techRadarUpdateFields.versionToUpdate = fields.versionToUpdate || null;
+    }
+    if (fields.versionUpdateDeadline !== undefined) {
+      techRadarUpdateFields.versionUpdateDeadline = fields.versionUpdateDeadline || null;
+    }
+    if (fields.upgradePath !== undefined) {
+      techRadarUpdateFields.upgradePath = fields.upgradePath || null;
+    }
+    if (fields.recommendedAlternatives !== undefined) {
+      techRadarUpdateFields.recommendedAlternatives = fields.recommendedAlternatives 
+        ? (Array.isArray(fields.recommendedAlternatives)
+            ? fields.recommendedAlternatives.join(',')
+            : fields.recommendedAlternatives)
+        : null;
     }
 
-    await techRadarApi.update(techRadarId, updateFields);
-    
-    // Находим элемент и создаём для него метаданные если их нет
+    await techRadarApi.update(techRadarId, techRadarUpdateFields);
+
+    // Находим элемент и проверяем есть ли метаданные
     const item = migrationItems.find(i => i.techRadarId === techRadarId);
-    if (item && !item.hasMetadata) {
-      // Создаём сущность метаданных со статусом backlog
-      try {
-        const response = await migrationMetadataApi.updateWithTechRadarId(techRadarId, { 
-          status: 'backlog',
-          progress: 0,
-          priority: item.priority 
-        });
-        setMigrationItems((prev: MigrationItem[]) => prev.map((prevItem: MigrationItem) =>
-          prevItem.techRadarId === techRadarId 
-            ? { ...prevItem, ...fields, hasMetadata: true, metadataId: response.id } 
-            : prevItem
-        ));
-        return;
-      } catch (err: any) {
-        console.error('Ошибка создания метаданных:', err);
+
+    // Если есть ownerId или другие поля метаданных, сохраняем их
+    if (fields.ownerId !== undefined || fields.versionToUpdate || fields.versionUpdateDeadline || fields.upgradePath || fields.recommendedAlternatives) {
+      // Если нет метаданных - создаем их
+      if (!item || !item.hasMetadata) {
+        try {
+          const response = await migrationMetadataApi.updateWithTechRadarId(techRadarId, {
+            status: 'backlog',
+            progress: 0,
+            priority: item?.priority ?? 999999,
+            ownerId: fields.ownerId,
+          });
+          setMigrationItems((prev: MigrationItem[]) => prev.map((prevItem: MigrationItem) =>
+            prevItem.techRadarId === techRadarId
+              ? { ...prevItem, ...fields, hasMetadata: true, metadataId: response.id }
+              : prevItem
+          ));
+          return;
+        } catch (err: any) {
+          console.error('Ошибка создания метаданных:', err);
+        }
+      } else {
+        // Обновляем ownerId в существующих метаданных через upsert
+        if (fields.ownerId !== undefined) {
+          await migrationMetadataApi.updateWithTechRadarId(techRadarId, {
+            ownerId: fields.ownerId,
+          });
+        }
       }
     }
-    
+
     setMigrationItems((prev: MigrationItem[]) => prev.map((item: MigrationItem) =>
       item.techRadarId === techRadarId ? { ...item, ...fields } : item
     ));
@@ -654,6 +742,7 @@ export const MigrationsPage: React.FC = () => {
         { key: 'currentVersion', label: 'Текущая версия' },
         { key: 'versionToUpdate', label: 'Версия для обновления', format: (_, row) => row.versionToUpdate || '-' },
         { key: 'versionUpdateDeadline', label: 'Дедлайн', format: (_, row) => row.versionUpdateDeadline ? new Date(row.versionUpdateDeadline).toLocaleDateString('ru-RU') : '-' },
+        { key: 'ownerName', label: 'Владелец', format: (_, row) => row.ownerName || '-' },
         { key: 'status', label: 'Статус', format: (_, row) => {
           const statusMap: Record<MigrationStatus, string> = {
             backlog: 'Бэклог',
@@ -687,6 +776,7 @@ export const MigrationsPage: React.FC = () => {
         { key: 'versionBefore', label: 'Версия до' },
         { key: 'versionAfter', label: 'Версия после', format: (_, row) => row.versionAfter || '-' },
         { key: 'deadline', label: 'Дедлайн', format: (_, row) => row.deadline ? new Date(row.deadline).toLocaleDateString('ru-RU') : '-' },
+        { key: 'ownerName', label: 'Владелец', format: (_, row) => row.ownerName || '-' },
         { key: 'upgradePath', label: 'Путь обновления', format: (_, row) => row.upgradePath || '-' },
         { key: 'recommendedAlternatives', label: 'Альтернативы', format: (_, row) => row.recommendedAlternatives || '-' },
         { key: 'completedAt', label: 'Завершена', format: (_, row) => row.completedAt ? new Date(row.completedAt).toLocaleDateString('ru-RU') : '-' },
@@ -942,13 +1032,31 @@ export const MigrationsPage: React.FC = () => {
                   Выполнено ({migrationItems.filter(i => i.status === 'completed').length})
                 </button>
               </div>
-              <input
-                type="text"
-                placeholder="Поиск технологии..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="flex gap-2 items-center">
+                <select
+                  value={ownerFilter}
+                  onChange={(e) => {
+                    setOwnerFilter(e.target.value);
+                  }}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  title="Фильтр по владельцу"
+                >
+                  <option value="all">Все владельцы</option>
+                  <option value="mine">Мои миграции</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Поиск технологии..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1005,6 +1113,7 @@ export const MigrationsPage: React.FC = () => {
                           onUpdateProgress={(metadataId, techRadarId, hasMetadata, progress) => handleUpdateMetadata(metadataId, techRadarId, hasMetadata, { progress })}
                           onSaveFields={handleSaveFields}
                           getStatusColor={getStatusColor}
+                          users={users}
                         />
                       ))
                     )}
