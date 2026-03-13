@@ -470,42 +470,43 @@ export const MigrationsPage: React.FC = () => {
     })
   );
 
+  // Функция загрузки данных миграций
+  const loadMigrationData = async () => {
+    try {
+      setLoading(true);
+      const [metadataResponse, statsResponse, snapshotsResponse, usersResponse] = await Promise.all([
+        migrationMetadataApi.getAll(true),
+        migrationMetadataApi.getStatistics(),
+        migrationSnapshotsApi.getAll(),
+        authApi.getActiveUsersWithFullName(),
+      ]);
+      setMigrationItems(metadataResponse);
+      setStats(statsResponse);
+      setSnapshots(snapshotsResponse);
+      setUsers(usersResponse);
+      // Инициализируем порядок отображения: сначала активные (не бэклог), потом бэклог
+      const sorted = [...metadataResponse].sort((a, b) => {
+        // Активные элементы (не бэклог) выше бэклога
+        const aIsBacklog = !a.hasMetadata || a.status === 'backlog';
+        const bIsBacklog = !b.hasMetadata || b.status === 'backlog';
+        if (aIsBacklog && !bIsBacklog) return 1;
+        if (!aIsBacklog && bIsBacklog) return -1;
+        // Внутри групп сортируем по priority
+        return a.priority - b.priority;
+      });
+      setDisplayOrder(sorted.map(i => i.metadataId));
+    } catch (err: any) {
+      console.error('Ошибка загрузки данных:', err);
+      setError(err.response?.data?.message || 'Ошибка загрузки данных');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [metadataResponse, statsResponse, snapshotsResponse, usersResponse] = await Promise.all([
-          migrationMetadataApi.getAll(true),
-          migrationMetadataApi.getStatistics(),
-          migrationSnapshotsApi.getAll(),
-          authApi.getActiveUsersWithFullName(),
-        ]);
-        setMigrationItems(metadataResponse);
-        setStats(statsResponse);
-        setSnapshots(snapshotsResponse);
-        setUsers(usersResponse);
-        // Инициализируем порядок отображения: сначала активные (не бэклог), потом бэклог
-        const sorted = [...metadataResponse].sort((a, b) => {
-          // Активные элементы (не бэклог) выше бэклога
-          const aIsBacklog = !a.hasMetadata || a.status === 'backlog';
-          const bIsBacklog = !b.hasMetadata || b.status === 'backlog';
-          if (aIsBacklog && !bIsBacklog) return 1;
-          if (!aIsBacklog && bIsBacklog) return -1;
-          // Внутри групп сортируем по priority
-          return a.priority - b.priority;
-        });
-        setDisplayOrder(sorted.map(i => i.metadataId));
-      } catch (err: any) {
-        console.error('Ошибка загрузки данных:', err);
-        setError(err.response?.data?.message || 'Ошибка загрузки данных');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    loadMigrationData();
   }, [isAuthenticated]);
 
   // Синхронизация displayOrder при изменении migrationItems
@@ -690,11 +691,12 @@ export const MigrationsPage: React.FC = () => {
   const handleCompleteMigration = async (item: MigrationItem) => {
     if (!isAdminOrManager) return;
 
-    if (!window.confirm(`Завершить миграцию "${item.techName}"?\n\nМетаданные миграции будут перемещены в архив и удалены из активного списка.`)) {
+    if (!window.confirm(`Завершить миграцию "${item.techName}"?\n\nМетаданные миграции будут перемещены в архив и удалены из активного списка.\n\nПоля миграции технологии будут очищены.`)) {
       return;
     }
 
     try {
+      // Создаем снапшот завершенной миграции (бэкенд автоматически удалит метаданные)
       await migrationSnapshotsApi.completeMigration(item.techRadarId, {
         techName: item.techName,
         versionBefore: item.currentVersion,
@@ -704,9 +706,35 @@ export const MigrationsPage: React.FC = () => {
         recommendedAlternatives: item.recommendedAlternatives || undefined,
       });
 
-      // Удаляем из локального состояния
-      setMigrationItems(prev => prev.filter(i => i.techRadarId !== item.techRadarId));
-      alert('Миграция завершена и перемещена в архив');
+      // Очищаем поля миграции в tech_radar
+      await techRadarApi.update(item.techRadarId, {
+        versionToUpdate: undefined,
+        versionUpdateDeadline: undefined,
+        upgradePath: undefined,
+        recommendedAlternatives: undefined,
+      });
+
+      // Обновляем локальное состояние - помечаем как завершенную
+      setMigrationItems(prev => prev.map(i =>
+        i.techRadarId === item.techRadarId
+          ? {
+              ...i,
+              versionToUpdate: undefined,
+              versionUpdateDeadline: undefined,
+              upgradePath: undefined,
+              recommendedAlternatives: undefined,
+              hasMetadata: false,
+              metadataId: '',
+              status: 'backlog',
+              progress: 0
+            }
+          : i
+      ));
+
+      // Перезагружаем данные для обновления вкладок
+      await loadMigrationData();
+
+      alert('Миграция завершена и перемещена в архив. Поля технологии очищены.');
     } catch (err: any) {
       console.error('Ошибка завершения миграции:', err);
       alert('Ошибка завершения миграции: ' + (err.response?.data?.message || err.message));
@@ -1170,6 +1198,7 @@ export const MigrationsPage: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Технология</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Версия до</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Версия после</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Владелец</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Путь обновления</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Завершена</th>
                     </tr>
@@ -1200,6 +1229,18 @@ export const MigrationsPage: React.FC = () => {
                             <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded font-mono text-xs text-green-700 dark:text-green-300">
                               {snapshot.versionAfter}
                             </span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {snapshot.ownerName ? (
+                            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              {snapshot.ownerName}
+                            </div>
                           ) : (
                             <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
                           )}

@@ -240,6 +240,10 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
         ...localEntity,
         adoptionRate: localEntity.adoptionRate == null ? undefined : localEntity.adoptionRate,
         popularityIndex: localEntity.popularityIndex == null ? undefined : localEntity.popularityIndex,
+        // Очищаем пустые строки для date полей
+        versionUpdateDeadline: localEntity.versionUpdateDeadline === '' ? undefined : localEntity.versionUpdateDeadline,
+        versionReleaseDate: localEntity.versionReleaseDate === '' ? undefined : localEntity.versionReleaseDate,
+        endOfLifeDate: localEntity.endOfLifeDate === '' ? undefined : localEntity.endOfLifeDate,
       };
 
       // Полная валидация сущности
@@ -285,6 +289,10 @@ export const TechRadarModal: React.FC<TechRadarModalProps> = ({ entity, onClose,
         ...localEntity,
         adoptionRate: localEntity.adoptionRate == null ? undefined : localEntity.adoptionRate,
         popularityIndex: localEntity.popularityIndex == null ? undefined : localEntity.popularityIndex,
+        // Очищаем пустые строки для date полей
+        versionUpdateDeadline: localEntity.versionUpdateDeadline === '' ? undefined : localEntity.versionUpdateDeadline,
+        versionReleaseDate: localEntity.versionReleaseDate === '' ? undefined : localEntity.versionReleaseDate,
+        endOfLifeDate: localEntity.endOfLifeDate === '' ? undefined : localEntity.endOfLifeDate,
       };
 
       // Полная валидация сущности (isUpdate=true)
